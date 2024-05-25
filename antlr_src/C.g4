@@ -13,7 +13,7 @@ LINECOMMENT: '//' ~[\n]* -> channel(HIDDEN);
 BLOCKCOMMENT: '/*' .*? '*/' -> channel(HIDDEN);
 
 LEFTPARENT: '(';
-RIGHTPAREN: ')';
+RIGHTPARENT: ')';
 LEFTBRACKET: '{';
 RIGHTBRACKET: '}';
 LEFTSBRACKET: '[';
@@ -24,7 +24,7 @@ SEMI: ';';
 COLON: ':';
 
 DOUBLEPLUS: '++';
-DOUBLEMINUX: '--';
+DOUBLEMINUS: '--';
 PLUSEQ: '+=';
 MINUSEQ: '-=';
 DOUBLEEQ: '==';
@@ -91,8 +91,206 @@ INT: 'int';
 LONG: 'long';
 FLOAT: 'float';
 DOUBLE: 'double';
+TYPEDEF: 'typedef';
 
 ID: [a-zA-Z] [a-zA-Z0-9_]*;
 FLOATCST: [0-9]+ '.' [0-9]+;
 INTCST: [0-9]+;
 STRINGCST: '"' ~["] '"';
+
+program:
+    (funDef | (varDecl ';') | typeDef)+;
+
+funDef: funProto compoundStatement;
+
+funProto: inline=INLINE? returnType=type (stars+=STAR)* LEFTPARENT (args+=argument (COMMA args+=argument)*)? RIGHTPARENT;
+
+argument: type_=type stars+=STAR* name=ID (LEFTSBRACKET sizes+=expression RIGHTSBRACKET)*;
+
+varDecl: type_=type decls+=baseVarDecl (COMMA decls+=baseVarDecl);
+
+baseVarDecl: stars+=STAR* name=ID (LEFTSBRACKET sizes+=expression? RIGHTSBRACKET)* (EQUAL value=assignmentExpression)?;
+
+typeDef:
+    UNION name=ID? LEFTBRACKET decls+=varDecl (COMMA decls+=varDecl)* RIGHTBRACKET #unionDef
+    | STRUCT name=ID? LEFTBRACKET decls+=varDecl (COMMA decls+=varDecl)* RIGHTBRACKET #structDef
+    | ENUM name=ID? LEFTBRACKET item+=enumItem (COMMA item+=enumItem)* RIGHTBRACKET #enumDef
+    | TYPEDEF bt=type name=ID #aliasDef
+;
+enumItem: name=ID (EQUAL value=conditionalExpression)?;
+
+statement:
+    labeledStatement
+    | compoundStatement
+    | varDeclStatement
+    | expressionStatement
+    | ifStatement
+    | switchStatement
+    | whileStatement
+    | doWhileStatement
+    | forStatement
+    | gotoStatement
+    | continueStatement
+    | breakStatement
+    | returnStatement
+;
+
+labeledStatement: label=ID COLON stmt=statement;
+compoundStatement: LEFTBRACKET stmt+=statement* RIGHTBRACKET;
+varDeclStatement: decl=varDecl SEMI;
+expressionStatement: value=expression? SEMI;
+ifStatement: IF LEFTPARENT cond=expression RIGHTPARENT thenPart=statement (ELSE elsePart=statement)?;
+switchStatement:
+    SWITCH LEFTPARENT cond=expression RIGHTPARENT
+    ((items+=switchItem) |
+    (LEFTBRACKET items+=switchItem* RIGHTBRACKET))
+;
+switchItem:
+    CASE cond=expression COLON body=statement #switchCaseItem
+    | DEFAULT COLON body=statement #switchDefaultItem;
+whileStatement: WHILE LEFTPARENT cond=expression RIGHTPARENT body=statement;
+doWhileStatement: DO body=statement WHILE LEFTPARENT cond=expression RIGHTPARENT SEMI;
+forStatement: FOR LEFTPARENT init=varDecl? SEMI cond=expression? SEMI step=expression? RIGHTPARENT body=statement;
+gotoStatement: GOTO label=ID SEMI;
+continueStatement: CONTINUE SEMI;
+breakStatement: BREAK SEMI;
+returnStatement: RETURN value=expression? SEMI;
+
+type: modifiers+=typeModifier* bt=baseType;
+typeModifier:
+    EXTERN #externTypeModifier
+    | STATIC #staticTypeModifier
+    | REGISTER #registerTypeModifier
+    | CONST #constTypeModifier
+    | VOLATILE #volatileTypeModifier
+;
+
+baseType:
+    VOID #voidType
+    | UNSIGNED LONG LONG #unsignedLongLongType
+    | UNSIGNED LONG #unsignedLongType
+    | UNSIGNED SHORT #unsignedShortType
+    | UNSIGNED CHAR #unsignedCharType
+    | UNSIGNED INT? #unsignedIntType
+    | CHAR #charType
+    | SHORT #shortType
+    | INT #intType
+    | LONG LONG #longLongType
+    | LONG #longType
+    | FLOAT #floatType
+    | DOUBLE #doubleType
+    | ENUM name=ID #enumType
+    | STRUCT name=ID #structType
+    | UNION name=ID #unionType
+    | name=ID #aliasType
+;
+
+expression: expr+=assignmentExpression (COMMA expr+=assignmentExpression);
+assignmentExpression:
+    conditionalExpression
+    | lvalue=unaryExpression op=assignOperator rvalue=assignmentExpression;
+assignOperator:
+    EQUAL #EqOp
+    | STAREQ #starEqOp
+    | DIVEQ #divEqOp
+    | MODULOEQ #moduloEqOp
+    | PLUSEQ #plusEqOp
+    | MINUSEQ #minusEqOp
+    | LSHIFTEQ #leftShiftEqOp
+    | RSHIFTEQ #rightShiftEqOp
+    | ANDEQ #andEqOp
+    | XOREQ #xorEqOp
+    | OREQ #orEqOp
+;
+
+conditionalExpression:
+    logicalOrExpression
+    | cond=logicalOrExpression QUESTIONMARK thenPart=expression COLON elsePart=conditionalExpression
+;
+
+logicalOrExpression: expr+=logicalAndExpression (LOR expr+=logicalAndExpression)*;
+logicalAndExpression: expr+=orExpression (LAND expr+=orExpression)*;
+orExpression: expr+=xorExpression (OR expr+=xorExpression)*;
+xorExpression: expr+=andExpression (XOR expr+=andExpression)*;
+andExpression: expr+=equalityExpression (AND expr+=equalityExpression)*;
+equalityExpression:
+    relationalExpression
+    | lval=equalityExpression op=equalityOperator rval=relationalExpression
+;
+equalityOperator:
+    DOUBLEEQ #equalOperator
+    | NOTEQ #notEqualOperator
+;
+relationalExpression:
+    shiftExpression
+    | lval=relationalExpression op=relationalOperator rval=shiftExpression
+;
+relationalOperator:
+    GE #geOperator
+    | GT #gtOperator
+    | LE #leOperator
+    | LT #ltOperator
+;
+shiftExpression:
+    additiveExpression
+    | lval=shiftExpression op=shiftOperator rval=additiveExpression
+;
+shiftOperator:
+    LSHIFT #lshiftOperator
+    | RSHIFT #rshiftOperator
+;
+additiveExpression:
+    multiplicativeExpression
+    | lval=additiveExpression op=additiveOperator rval=multiplicativeExpression
+;
+additiveOperator:
+    PLUS #plusOperator
+    | MINUS #minusOperator
+;
+multiplicativeExpression:
+    castExpression
+    | lval=multiplicativeExpression op=multiplicativeOperator rval=castExpression
+;
+multiplicativeOperator:
+    STAR #multOperator
+    | DIV #divOperator
+    | MODULO #moduloOperator
+;
+castExpression: (LEFTPARENT types+=type RIGHTPARENT)* expr=unaryExpression;
+unaryExpression:
+    postfixExpression
+    | sizeofExpression
+    | op=unaryOperator expr=unaryExpression
+;
+unaryOperator:
+    DOUBLEPLUS #incrOperator
+    | DOUBLEMINUS #decrOperator
+    | AND #addrofOperator
+    | STAR #derefOperator
+    | PLUS #positiveOperator
+    | MINUS #negativeOperator
+    | NOT #notOperator
+    | LNOT #lnotOperator
+;
+sizeofExpression: SIZEOF (expr=unaryExpression | (LEFTPARENT type_=type RIGHTPARENT));
+postfixExpression:
+    primaryExpression #primaryPostfixExpression
+    | expr=postfixExpression LEFTSBRACKET index=expression RIGHTSBRACKET #arrayExpression
+    | expr=postfixExpression LEFTPARENT (args+=assignmentExpression (COMMA args+=assignmentExpression)*)? RIGHTPARENT #funCallExpression
+    | expr=postfixExpression DOT field=ID #fieldExpression
+    | expr=postfixExpression TO field=ID #ptrFieldExpression
+    | expr=postfixExpression DOUBLEPLUS #postincrExpression
+    | expr=postfixExpression DOUBLEMINUS #postdecrExpression
+;
+primaryExpression:
+    name=ID #varExpression
+    | val=INTCST #intExpression
+    | val=FLOATCST #floatExpression
+    | LEFTPARENT expr=expression RIGHTPARENT #parentExpression
+    | LEFTBRACKET (val+=assignmentExpression (COMMA val+=assignmentExpression)*)? RIGHTBRACKET #structureExpression
+    | GENERIC LEFTPARENT expr=assignmentExpression COMMA cases+=genericItem (COMMA cases+=genericItem)* RIGHTPARENT #genericExpression
+;
+genericItem:
+    type_=type COLON body=assignmentExpression #typeGenericItem
+    | DEFAULT COLON body=assignmentExpression #defaultGenericItem
+;
