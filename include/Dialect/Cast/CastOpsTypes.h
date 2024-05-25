@@ -6,16 +6,17 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef CAST_TYPES_TD__
-#define CAST_TYPES_TD__
+#ifndef Cast_TYPES_H__
+#define Cast_TYPES_H__
 
-include "Dialect/Cast/CastDialect.td"
-include "mlir/IR/AttrTypeBase.td"
+#include "mlir/IR/BuiltinTypes.h"
+#include "mlir/IR/Types.h"
+#include "mlir/IR/Dialect.h"
+#include "mlir/IR/OpDefinition.h"
 
-class Cast_AstNodeType<string name, string typeMnemonic, list<Trait> traits = []>
-: TypeDef<Cast_Dialect, name, traits>
-{
-  let mnemonic = typeMnemonic;
-}
+#define GET_TYPEDEF_CLASSES
+#include "Dialect/Cast/CastOpsTypes.h.inc"
+#undef GET_TYPEDEF_CLASSES
+
 
 #endif

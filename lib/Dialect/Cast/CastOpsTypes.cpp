@@ -6,17 +6,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef Cast_TYPES_H__
-#define Cast_TYPES_H__
-
 #include "mlir/IR/BuiltinTypes.h"
-#include "mlir/IR/Types.h"
-#include "mlir/IR/Dialect.h"
-#include "mlir/IR/OpDefinition.h"
+#include "mlir/IR/OpImplementation.h"
+#include "mlir/Parser/Parser.h"
+#include "llvm/ADT/TypeSwitch.h"
+#include "mlir/Support/TypeID.h"
+#include "mlir/IR/DialectImplementation.h"
+
+#include "Dialect/Cast/CastDialect.h"
+#include "Dialect/Cast/CastOpsTypes.h"
 
 #define GET_TYPEDEF_CLASSES
-#include "Dialect/Cast/CastTypes.h.inc"
+#include "Dialect/Cast/CastOpsTypes.cpp.inc"
 #undef GET_TYPEDEF_CLASSES
-
-
-#endif

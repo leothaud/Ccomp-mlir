@@ -25,6 +25,7 @@ def Cast_Dialect : Dialect {
         this project.
     }];
     let cppNamespace = "::ccomp::cast";
+    let useDefaultTypePrinterParser = 1;
 }
 
 //===----------------------------------------------------------------------===//
@@ -32,6 +33,6 @@ def Cast_Dialect : Dialect {
 //===----------------------------------------------------------------------===//
 
 class Cast_Op<string mnemonic, list<Trait> traits = []> :
-        Op<Cast_Dialect, mnemonic, traits>;
+    Op<Cast_Dialect, mnemonic, traits>;
 
 #endif // CAST_DIALECT

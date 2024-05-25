@@ -260,8 +260,9 @@ castExpression: (LEFTPARENT types+=type RIGHTPARENT)* expr=unaryExpression;
 unaryExpression:
     postfixExpression
     | sizeofExpression
-    | op=unaryOperator expr=unaryExpression
+    | unopExpression
 ;
+unopExpression:op=unaryOperator expr=unaryExpression;
 unaryOperator:
     DOUBLEPLUS #incrOperator
     | DOUBLEMINUS #decrOperator

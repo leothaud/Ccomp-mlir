@@ -1,6 +1,7 @@
 add_mlir_dialect_library(CastDialect
         CastDialect.cpp
         CastOps.cpp
+        CastOpsTypes.cpp
 
         ADDITIONAL_HEADER_DIRS
         ${PROJECT_SOURCE_DIR}/include/Cast

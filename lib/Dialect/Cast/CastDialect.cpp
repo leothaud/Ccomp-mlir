@@ -14,8 +14,15 @@ using namespace ccomp;
 using namespace ccomp::cast;
 
 void CastDialect::initialize() {
+  addTypes<
+#define GET_TYPEDEF_LIST
+#include "Dialect/Cast/CastOpsTypes.cpp.inc"
+#undef GET_TYPEDEF_LIST
+  >();
+
   addOperations<
 #define GET_OP_LIST
 #include "Dialect/Cast/CastOps.cpp.inc"
+#undef GET_OP_LIST
       >();
 }

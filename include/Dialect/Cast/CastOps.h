@@ -15,6 +15,8 @@
 #include "mlir/Interfaces/InferTypeOpInterface.h"
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 
+#include "Dialect/Cast/CastOpsTypes.h"
+
 #define GET_OP_CLASSES
 #include "Dialect/Cast/CastOps.h.inc"
 

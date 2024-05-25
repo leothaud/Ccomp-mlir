@@ -11,6 +11,7 @@
 #define CAST_OPS
 
 include "CastDialect.td"
+include "Dialect/Cast/CastOpsTypes.td"
 include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 
@@ -18,7 +19,7 @@ include "mlir/Interfaces/SideEffectInterfaces.td"
 
 def Cast_FooOp: Cast_Op<"foo"> {
     let arguments = (ins);
-    let results = (outs);
+    let results = (outs Cast_ProgramNodeType:$res);
 }
 
 #endif // CAST_OPS
