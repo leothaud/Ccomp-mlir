@@ -379,5 +379,52 @@ def Cast_GenericItemPred : Or<[
   Cast_DefaultGenericItemPred
 ]>;
 
+def Cast_ProgramItemPred : Or<[
+  Cast_FunDefPred,
+  Cast_VarDeclPred,
+  Cast_TypeDefPred
+]>;
+
+
+def Cast_ConditionalExpressionPred : Or<[
+  Cast_LogicalOrExpressionPred,
+  Cast_ConditionalOpExpressionPred
+]>;
+
+def Cast_AssignmentExpressionPred : Or<[
+  Cast_ConditionalExpressionPred,
+  Cast_AssignOpExpressionPred
+]>;
+
+def Cast_MultiplicativeExpressionPred : Or<[
+  Cast_CastExpressionPred,
+  Cast_MulOpExpressionPred
+]>;
+
+def Cast_AdditiveExpressionPred : Or<[
+  Cast_MultiplicativeExpressionPred,
+  Cast_AddOpExpressionPred
+]>;
+
+def Cast_ShiftExpressionPred : Or<[
+  Cast_AdditiveExpressionPred,
+  Cast_ShiftOpExpressionPred
+]>;
+
+def Cast_RelationalExpressionPred :  Or<[
+  Cast_ShiftExpressionPred,
+  Cast_RelOpExpressionPred
+]>;
+
+def Cast_EqualityExpressionPred : Or<[
+  Cast_RelationalExpressionPred,
+  Cast_EqualOpExpressionPred
+]>;
+
+def Cast_UnaryExpressionPred : Or<[
+  Cast_PostfixExpressionPred,
+  Cast_SizeofExpressionPred,
+  Cast_UnopExpressionPred
+]>;
 
 #endif
