@@ -25,7 +25,7 @@ def Cast_ProgramOp : Cast_Op<"program"> {
     let arguments = (ins Variadic<Type<Cast_ProgramItemPred>>:$items);
     let results = (outs Cast_ProgramNodeType:$res);
     let assemblyFormat = [{
-        $items attr-dict `:` type($items)
+        $items `:` type($items) attr-dict
     }];
 }
 
@@ -34,30 +34,30 @@ def Cast_FunDefOp : Cast_Op<"funDef"> {
                          Type<Cast_CompoundStatementPred>:$body);
     let results = (outs Cast_FunDefNodeType:$res);
     let assemblyFormat = [{
-        $proto `:` type($proto) attr-dict $body `:` type($body)
+        $proto `:` type($proto) $body `:` type($body) attr-dict
     }];
 }
 
 def Cast_FunProtoOp : Cast_Op<"funProto"> {
     let arguments = (ins I1:$isInlined,
                          Type<Cast_TypePred>:$returnType,
-                         I32:$stars,
+                         Builtin_IntegerAttr:$stars,
                          Variadic<Type<Cast_ArgumentPred>>:$args
                     );
     let results = (outs Cast_FunProtoNodeType:$res);
     let assemblyFormat = [{
-        $isInlined $returnType `:` type($returnType) $stars attr-dict $args `:` type($args)
+        $isInlined $returnType `:` type($returnType) $stars $args `:` type($args) attr-dict
     }];
 }
 
 def Cast_ArgumentOp : Cast_Op<"argument"> {
     let arguments = (ins Type<Cast_TypePred>:$varType,
-                         I32:$stars,
+                         Builtin_IntegerAttr:$stars,
                          Builtin_StringAttr:$name,
                          Variadic<Type<Cast_ExpressionPred>>:$sizes);
     let results = (outs Cast_ArgumentNodeType:$res);
     let assemblyFormat = [{
-        $varType `:` type($varType) $stars $name attr-dict $sizes `:` type($sizes)
+        $varType `:` type($varType) $stars $name $sizes `:` type($sizes) attr-dict
     }];
 }
 
@@ -66,17 +66,17 @@ def Cast_VarDeclOp : Cast_Op<"varDecl"> {
                          Variadic<Type<Cast_BaseVarDeclPred>>:$decls);
     let results = (outs Cast_VarDeclNodeType:$res);
     let assemblyFormat = [{
-        $varType `:` type($varType) attr-dict $decls `:` type($decls)
+        $varType `:` type($varType) $decls `:` type($decls) attr-dict
     }];
 }
 
 def Cast_BaseVarDeclOp : Cast_Op<"baseVarDecl"> {
-    let arguments = (ins I32:$stars,
+    let arguments = (ins Builtin_IntegerAttr:$stars,
                          Builtin_StringAttr:$name,
                          Variadic<Type<Cast_ExpressionPred>>:$sizes);
     let results = (outs Cast_BaseVarDeclNodeType);
     let assemblyFormat = [{
-        $stars $name attr-dict $sizes `:` type($sizes)
+        $stars $name $sizes `:` type($sizes) attr-dict
     }];
 }
 
@@ -85,7 +85,7 @@ def Cast_UnionDefOp : Cast_Op<"unionDef"> {
                          Variadic<Type<Cast_VarDeclPred>>:$decls);
     let results = (outs Cast_UnionDefNodeType:$res);
     let assemblyFormat = [{
-        $name attr-dict $decls `:` type($decls)
+        $name $decls `:` type($decls) attr-dict
     }];
 }
 
@@ -94,7 +94,7 @@ def Cast_StructDefOp : Cast_Op<"structDef"> {
                          Variadic<Type<Cast_VarDeclPred>>:$decls);
     let results = (outs Cast_StructDefNodeType:$res);
     let assemblyFormat = [{
-        $name attr-dict $decls `:` type($decls)
+        $name $decls `:` type($decls) attr-dict
     }];
 }
 
@@ -103,7 +103,7 @@ def Cast_EnumDefOp : Cast_Op<"enumDef"> {
                          Variadic<Type<Cast_EnumItemPred>>:$items);
     let results = (outs Cast_EnumDefNodeType:$res);
     let assemblyFormat = [{
-        $name attr-dict $items `:` type($items)
+        $name $items `:` type($items) attr-dict
     }];
 }
 
@@ -112,7 +112,7 @@ def Cast_AliasDefOp : Cast_Op<"aliasDef"> {
                          Type<Cast_TypePred>:$baseType);
     let results = (outs Cast_AliasDefNodeType:$results);
     let assemblyFormat = [{
-        $name attr-dict $baseType `:` type($baseType)
+        $name $baseType `:` type($baseType) attr-dict
     }];
 }
 
@@ -121,7 +121,7 @@ def Cast_EnumItemOp : Cast_Op<"enumItem"> {
                          Optional<Type<Cast_ConditionalExpressionPred>>:$value);
     let results = (outs Cast_EnumItemNodeType:$res);
     let assemblyFormat = [{
-        $name attr-dict $value `:` type($value)
+        $name $value `:` type($value) attr-dict
     }];
 }
 
@@ -130,7 +130,7 @@ def Cast_LabeledStatementOp : Cast_Op<"labeledStatement"> {
                          Type<Cast_StatementPred>:$stmt);
     let results = (outs Cast_LabeledStatementNodeType:$res);
     let assemblyFormat = [{
-        $label attr-dict $stmt `:` type($stmt)
+        $label $stmt `:` type($stmt) attr-dict
     }];
 }
 
@@ -138,7 +138,7 @@ def Cast_CompoundStatmentOp : Cast_Op<"compoundStatement"> {
     let arguments = (ins Variadic<Type<Cast_StatementPred>>:$stmt);
     let results = (outs Cast_CompoundStatementNodeType:$res);
     let assemblyFormat = [{
-        attr-dict $stmt `:` type($stmt)
+        $stmt `:` type($stmt) attr-dict
     }];
 }
 
@@ -146,7 +146,7 @@ def Cast_VarDeclStatementOp : Cast_Op<"varDecl"> {
     let arguments = (ins Type<Cast_VarDeclPred>:$decl);
     let results = (outs Cast_VarDeclStatementNodeType:$res);
     let assemblyFormat = [{
-        attr-dict $decl `:` type($decl)
+        $decl `:` type($decl) attr-dict
     }];
 }
 
@@ -154,7 +154,7 @@ def Cast_ExpressionStatementOp : Cast_Op<"expressionStatement"> {
     let arguments = (ins Optional<Type<Cast_ExpressionPred>>:$value);
     let results = (outs Cast_ExpressionStatementNodeType:$res);
     let assemblyFormat = [{
-        attr-dict $value `:` type($value)
+        $value `:` type($value) attr-dict
     }];
 }
 
@@ -164,7 +164,7 @@ def Cast_IfStatementOp : Cast_Op<"ifStatement"> {
                          Optional<Type<Cast_StatementPred>>:$elsePart);
     let results = (outs Cast_IfStatementNodeType:$res);
     let assemblyFormat = [{
-        $cond `:` type($cond) attr-dict $thenPart `:` type($thenPart) `,` $elsePart `:` type($elsePart)
+        $cond `:` type($cond) $thenPart `:` type($thenPart) $elsePart `:` type($elsePart) attr-dict
     }];
 }
 
@@ -173,7 +173,7 @@ def Cast_SwitchStatementOp : Cast_Op<"switchStatement"> {
                          Variadic<Type<Cast_SwitchItemPred>>:$items);
     let results = (outs Cast_SwitchStatementNodeType:$res);
     let assemblyFormat = [{
-        $cond `:` type($cond) attr-dict $items `:` type($items)
+        $cond `:` type($cond) $items `:` type($items) attr-dict
     }];
 }
 
@@ -182,7 +182,7 @@ def Cast_SwitchCaseItemOp : Cast_Op<"SwitchCaseItem"> {
                          Type<Cast_StatementPred>:$body);
     let results = (outs Cast_SwitchCaseItemNodeType:$res);
     let assemblyFormat = [{
-        $cond `:` type($cond) attr-dict $body `:` type($body)
+        $cond `:` type($cond) $body `:` type($body) attr-dict
     }];
 }
 
@@ -190,7 +190,7 @@ def Cast_SwitchDefaultItemOp : Cast_Op<"switchDefaultItem"> {
     let arguments = (ins Type<Cast_StatementPred>:$body);
     let results = (outs Cast_SwitchDefaultItemNodeType:$res);
     let assemblyFormat = [{
-        attr-dict $body `:` type($body)
+        $body `:` type($body) attr-dict
     }];
 }
 
@@ -199,7 +199,7 @@ def Cast_WhileStatementOp : Cast_Op<"whileStatement"> {
                          Type<Cast_StatementPred>:$body);
     let results = (outs Cast_WhileStatementNodeType:$res);
     let assemblyFormat = [{
-        $cond `:` type($cond) attr-dict $body `:` type($body)
+        $cond `:` type($cond) $body `:` type($body) attr-dict
     }];
 }
 
@@ -208,7 +208,7 @@ def Cast_DoWhileStatementOp : Cast_Op<"doWhileStatement"> {
                          Type<Cast_StatementPred>:$body);
     let results = (outs Cast_DoWhileStatementNodeType:$res);
     let assemblyFormat = [{
-        $cond `:` type($cond) attr-dict $body `:` type($body)
+        $cond `:` type($cond) $body `:` type($body) attr-dict
     }];
 }
 
@@ -219,7 +219,7 @@ def Cast_ForStatementOp : Cast_Op<"forStatement", [AttrSizedOperandSegments]> {
                          Type<Cast_StatementPred>:$body);
     let results = (outs Cast_ForStatementNodeType:$res);
     let assemblyFormat = [{
-        $init `:` type($init) `,` $cond `:` type($cond) `,` $step `:` type($step) attr-dict $body `:` type($body)
+        $init `:` type($init) $cond `:` type($cond) $step `:` type($step) $body `:` type($body) attr-dict
     }];
 }
 
@@ -251,7 +251,7 @@ def Cast_ReturnStatementOp : Cast_Op<"returnStatement"> {
     let arguments = (ins Optional<Type<Cast_ExpressionPred>>:$value);
     let results = (outs Cast_ReturnStatementNodeType:$res);
     let assemblyFormat = [{
-        attr-dict $value `:` type($value)
+        $value `:` type($value) attr-dict
     }];
 }
 
@@ -260,7 +260,7 @@ def Cast_TypeOp : Cast_Op<"Type"> {
                          Type<Cast_BaseTypePred>:$baseType);
     let results = (outs Cast_TypeNodeType:$res);
     let assemblyFormat = [{
-        $modifiers `:` type($modifiers) attr-dict $baseType `:` type($baseType)
+        $modifiers `:` type($modifiers) $baseType `:` type($baseType) attr-dict
     }];
 }
 
@@ -445,7 +445,7 @@ def Cast_ExpressionOp : Cast_Op<"Expression"> {
     let arguments = (ins Variadic<Type<Cast_AssignmentExpressionPred>>:$expr);
     let results = (outs Cast_ExpressionNodeType:$res);
     let assemblyFormat = [{
-        attr-dict $expr `:` type($expr)
+        $expr `:` type($expr) attr-dict
     }];
 }
 
@@ -455,18 +455,511 @@ def Cast_AssignmentExpressionOp : Cast_Op<"AssignmentExpression"> {
                          Type<Cast_AssignmentExpressionPred>:$rvalue);
     let results = (outs Cast_AssignOpExpressionNodeType:$res);
     let assemblyFormat = [{
-        $lvalue `:` type($lvalue) attr-dict $op `:` type($op) $rvalue `:` type($rvalue)
+        $lvalue `:` type($lvalue) $op `:` type($op) $rvalue `:` type($rvalue) attr-dict
     }];
 }
 
-/*
 
-def Cast_Op : Cast_Op<""> {
+def Cast_EqOpOp : Cast_Op<"eqOp"> {
     let arguments = (ins );
-    let results = (outs Cast_NodeType:$res);
+    let results = (outs Cast_EqOpNodeType:$res);
     let assemblyFormat = [{
-
+        attr-dict
     }];
 }
-*/
+
+def Cast_StarEqOpOp : Cast_Op<"starEqOp"> {
+    let arguments = (ins );
+    let results = (outs Cast_StarEqOpNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_DivEqOpOp : Cast_Op<"divEqOp"> {
+    let arguments = (ins );
+    let results = (outs Cast_DivEqOpNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_ModuloEqOpOp : Cast_Op<"moduloEqOp"> {
+    let arguments = (ins );
+    let results = (outs Cast_ModuloEqOpNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_PlusEqOpOp : Cast_Op<"plusEqOp"> {
+    let arguments = (ins );
+    let results = (outs Cast_PlusEqOpNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_MinusEqOpOp : Cast_Op<"minusEqOp"> {
+    let arguments = (ins );
+    let results = (outs Cast_MinusEqOpNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_LeftShiftEqOpOp : Cast_Op<"leftShiftEqOp"> {
+    let arguments = (ins );
+    let results = (outs Cast_LeftShiftEqOpNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_RightShiftEqOpOp : Cast_Op<"rightShiftEqOp"> {
+    let arguments = (ins );
+    let results = (outs Cast_RightShiftEqOpNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_AndEqOpOp : Cast_Op<"andEqOp"> {
+    let arguments = (ins );
+    let results = (outs Cast_AndEqOpNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_XorEqOpOp : Cast_Op<"xorEqOp"> {
+    let arguments = (ins );
+    let results = (outs Cast_XorEqOpNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_OrEqOpOp : Cast_Op<"orEqOp"> {
+    let arguments = (ins );
+    let results = (outs Cast_OrEqOpNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_ConditionalExpressionOp : Cast_Op<"conditionalExpression"> {
+    let arguments = (ins Type<Cast_LogicalOrExpressionPred>:$cond,
+                         Type<Cast_ExpressionPred>:$thenPart,
+                         Type<Cast_ExpressionPred>:$elsePart);
+    let results = (outs Cast_ConditionalOpExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $cond `:` type($cond) $thenPart `:` type($thenPart) $elsePart `:` type($elsePart) attr-dict
+    }];
+}
+
+def Cast_LogicalOrExpressionOp : Cast_Op<"logicalOrExpression"> {
+    let arguments = (ins Variadic<Type<Cast_LogicalAndExpressionPred>>:$expr);
+    let results = (outs Cast_LogicalOrExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) attr-dict
+    }];
+}
+
+def Cast_LogicalAndExpressionOp : Cast_Op<"logicalAndExpression"> {
+    let arguments = (ins Variadic<Type<Cast_OrExpressionPred>>:$expr);
+    let results = (outs Cast_LogicalAndExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) attr-dict
+    }];
+}
+
+def Cast_OrExpressionOp : Cast_Op<"orExpression"> {
+    let arguments = (ins Variadic<Type<Cast_XorExpressionPred>>:$expr);
+    let results = (outs Cast_OrExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) attr-dict
+    }];
+}
+
+def Cast_XorExpressionOp : Cast_Op<"xorExpression"> {
+    let arguments = (ins Variadic<Type<Cast_AndExpressionPred>>:$expr);
+    let results = (outs Cast_XorExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) attr-dict
+    }];
+}
+
+def Cast_AndExpressionOp : Cast_Op<"andExpression"> {
+    let arguments = (ins Variadic<Type<Cast_EqualityExpressionPred>>:$expr);
+    let results = (outs Cast_AndExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) attr-dict
+    }];
+}
+
+def Cast_EqualityExpressionOp : Cast_Op<"equalityExpression"> {
+    let arguments = (ins Type<Cast_EqualityExpressionPred>:$lval,
+                         Type<Cast_EqualityOperatorPred>:$op,
+                         Type<Cast_RelationalExpressionPred>:$rval);
+    let results = (outs Cast_EqualOpExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $lval `:` type($lval) $op `:` type($op) $rval `:` type($rval) attr-dict
+    }];
+}
+
+def Cast_EqualOperatorOp : Cast_Op<"equalOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_EqualOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_NotEqualOperatorOp : Cast_Op<"notEqualOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_NotEqualOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_RelationalExpressionOp : Cast_Op<"relationalExpression"> {
+    let arguments = (ins Type<Cast_RelationalExpressionPred>:$lval,
+                         Type<Cast_RelationalOperatorPred>:$op,
+                         Type<Cast_ShiftExpressionPred>:$rval);
+    let results = (outs Cast_RelOpExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $lval `:` type($lval) $op `:` type($op) $rval `:` type($rval) attr-dict
+    }];
+}
+
+def Cast_GeOperatorOp : Cast_Op<"geOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_GeOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_LeOperatorOp : Cast_Op<"leOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_LeOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_GtOperatorOp : Cast_Op<"gtOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_GtOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_LtOperatorOp : Cast_Op<"ltOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_LtOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_ShiftExpressionOp : Cast_Op<"shiftExpression"> {
+    let arguments = (ins Type<Cast_ShiftExpressionPred>:$lval,
+                         Type<Cast_ShiftOperatorPred>:$op,
+                         Type<Cast_AdditiveExpressionPred>:$rval);
+    let results = (outs Cast_ShiftOpExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $lval `:` type($lval) $op `:` type($op) $rval `:` type($rval) attr-dict
+    }];
+}
+
+def Cast_LshiftOperatorOp : Cast_Op<"lshiftOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_LshiftOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_RshiftOperatorOp : Cast_Op<"rshiftOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_RshiftOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_AdditiveExpressionOp : Cast_Op<"AdditiveExpression"> {
+    let arguments = (ins Type<Cast_AdditiveExpressionPred>:$lval,
+                         Type<Cast_AdditiveOperatorPred>:$op,
+                         Type<Cast_MultiplicativeExpressionPred>:$rval);
+    let results = (outs Cast_AddOpExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $lval `:` type($lval) $op `:` type($op) $rval `:` type($rval) attr-dict
+    }];
+}
+
+def Cast_PlusOperatorOp : Cast_Op<"plusOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_PlusOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_MinusOperatorOp : Cast_Op<"minusOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_MinusOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_MultiplicativeExpressionOp : Cast_Op<"multiplicativeExpression"> {
+    let arguments = (ins Type<Cast_MultiplicativeExpressionPred>:$lval,
+                         Type<Cast_MultiplicativeOperatorPred>:$op,
+                         Type<Cast_CastExpressionPred>:$rval);
+    let results = (outs Cast_MulOpExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $lval `:` type($lval) $op `:` type($op) $rval `:` type($rval) attr-dict
+    }];
+}
+
+def Cast_DivOperatorOp : Cast_Op<"divOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_DivOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_ModuloOperatorOp : Cast_Op<"moduloOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_ModuloOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_CastExpressionOp : Cast_Op<"castExpression"> {
+    let arguments = (ins Variadic<Type<Cast_TypePred>>:$types,
+                         Type<Cast_UnaryExpressionPred>:$expr);
+    let results = (outs Cast_CastExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $types `:` type($types) $expr `:` type($expr) attr-dict
+    }];
+}
+
+def Cast_UnopExpresionOp : Cast_Op<"unopExpresion"> {
+    let arguments = (ins Type<Cast_UnaryOperatorPred>:$op,
+                         Type<Cast_UnaryExpressionPred>:$expr);
+    let results = (outs Cast_UnopExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $op `:` type($op) $expr `:` type($expr) attr-dict
+    }];
+}
+
+
+def Cast_IncrOperatorOp : Cast_Op<"incrOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_IncrOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_DecrOperatorOp : Cast_Op<"decrOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_DecrOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_AddrofOperatorOp : Cast_Op<"addrofOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_AddrofOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_DerefOperatorOp : Cast_Op<"derefOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_DerefOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_PositiveOperatorOp : Cast_Op<"positiveOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_PositiveOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_NegativeOperatorOp : Cast_Op<"negativeOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_NegativeOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_NotOperatorOp : Cast_Op<"notOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_NotOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_LnotOperatorOp : Cast_Op<"lnotOperator"> {
+    let arguments = (ins );
+    let results = (outs Cast_LnotOperatorNodeType:$res);
+    let assemblyFormat = [{
+        attr-dict
+    }];
+}
+
+def Cast_SizeofExpressionsOp : Cast_Op<"sizeofExpressions", [AttrSizedOperandSegments]> {
+    let arguments = (ins Optional<Type<Cast_UnaryExpressionPred>>:$expr,
+                         Optional<Type<Cast_TypePred>>:$typeExpr);
+    let results = (outs Cast_SizeofExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) $typeExpr `:` type($typeExpr) attr-dict
+    }];
+}
+
+def Cast_PrimaryPostfixExpressionOp : Cast_Op<"primaryPostfixExpression"> {
+    let arguments = (ins Type<Cast_PrimaryExpressionPred>:$expr);
+    let results = (outs Cast_PrimaryPostfixExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) attr-dict
+    }];
+}
+
+def Cast_ArrayExpressionOp : Cast_Op<"arrayExpression"> {
+    let arguments = (ins Type<Cast_PostfixExpressionPred>:$expr,
+                         Type<Cast_ExpressionPred>:$index);
+    let results = (outs Cast_ArrayExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) $index `:` type($index) attr-dict
+    }];
+}
+
+def Cast_FunCallExpressionOp : Cast_Op<"funCallExpression"> {
+    let arguments = (ins Type<Cast_PostfixExpressionPred>:$expr,
+                         Variadic<Type<Cast_AssignmentExpressionPred>>:$args);
+    let results = (outs Cast_FunCallExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) $args `:` type($args) attr-dict
+    }];
+}
+
+def Cast_FieldExpressionOp : Cast_Op<"fieldExpression"> {
+    let arguments = (ins Type<Cast_PostfixExpressionPred>:$expr,
+                         Builtin_StringAttr:$field);
+    let results = (outs Cast_FieldExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) $field attr-dict
+    }];
+}
+
+def Cast_PtrFieldExpressionOp : Cast_Op<"ptrFieldExpression"> {
+    let arguments = (ins Type<Cast_PostfixExpressionPred>:$expr,
+                         Builtin_StringAttr:$field);
+    let results = (outs Cast_PtrFieldExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) $field attr-dict
+    }];
+}
+
+def Cast_PostincrExpressionOp : Cast_Op<"postincrExpression"> {
+    let arguments = (ins Type<Cast_PostfixExpressionPred>:$expr);
+    let results = (outs Cast_PostincrExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) attr-dict
+    }];
+}
+
+def Cast_PostdecrExpressionOp : Cast_Op<"postdecrExpression"> {
+    let arguments = (ins Type<Cast_PostfixExpressionPred>:$expr);
+    let results = (outs Cast_PostdecrExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) attr-dict
+    }];
+}
+
+def Cast_VarExpressionOp : Cast_Op<"varExpression"> {
+    let arguments = (ins Builtin_StringAttr:$name);
+    let results = (outs Cast_VarExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $name attr-dict
+    }];
+}
+
+def Cast_IntExpressionOp : Cast_Op<"intExpression"> {
+    let arguments = (ins Builtin_IntegerAttr:$val);
+    let results = (outs Cast_IntExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $val attr-dict
+    }];
+}
+
+def Cast_FloatExpressionOp : Cast_Op<"floatExpression"> {
+    let arguments = (ins F64:$val);
+    let results = (outs Cast_FloatExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $val attr-dict
+    }];
+}
+
+def Cast_ParentExpressionOp : Cast_Op<"parentExpression"> {
+    let arguments = (ins Type<Cast_ExpressionPred>:$expr);
+    let results = (outs Cast_ParentExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) attr-dict
+    }];
+}
+
+def Cast_StructureExpressionOp : Cast_Op<"structureExpression"> {
+    let arguments = (ins Variadic<Type<Cast_AssignmentExpressionPred>>:$val);
+    let results = (outs Cast_StructureExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $val `:` type($val) attr-dict
+    }];
+}
+
+def Cast_GenericExpressionOp : Cast_Op<"genericExpression"> {
+    let arguments = (ins Type<Cast_AssignmentExpressionPred>:$expr,
+                         Variadic<Type<Cast_GenericItemPred>>:$cases);
+    let results = (outs Cast_GenericExpressionNodeType:$res);
+    let assemblyFormat = [{
+        $expr `:` type($expr) $cases `:` type($cases) attr-dict
+    }];
+}
+
+def Cast_TypeGenericItemOp : Cast_Op<"typeGenericItem"> {
+    let arguments = (ins Type<Cast_TypePred>:$typeExpr,
+                         Type<Cast_AssignmentExpressionPred>:$body);
+    let results = (outs Cast_TypeGenericItemNodeType:$res);
+    let assemblyFormat = [{
+        $typeExpr `:` type($typeExpr) $body `:` type($body) attr-dict
+    }];
+}
+
+def Cast_DefaultGenericItemOp : Cast_Op<"defaultGenericItem"> {
+    let arguments = (ins Type<Cast_AssignmentExpressionPred>:$body);
+    let results = (outs Cast_DefaultGenericItemNodeType:$res);
+    let assemblyFormat = [{
+        $body `:` type($body) attr-dict
+    }];
+}
+
 #endif // CAST_OPS

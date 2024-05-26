@@ -130,7 +130,7 @@ def Cast_ParentExpressionNodeType : Cast_AstNodeType<"Cast_ParentExpressionNode"
 def Cast_StructureExpressionNodeType : Cast_AstNodeType<"Cast_StructureExpressionNode", "structureExpressionNode">{}
 def Cast_GenericExpressionNodeType : Cast_AstNodeType<"Cast_GenericExpressionNode", "genericExpressionNode">{}
 def Cast_TypeGenericItemNodeType : Cast_AstNodeType<"Cast_TypeGenericItemNode", "typeGenericItemNode">{}
-def Cast_DefaultGenericItemNodeType : Cast_AstNodeType<"Cast_DefaultGenericIteNode", "defaultGenericIteNode">{}
+def Cast_DefaultGenericItemNodeType : Cast_AstNodeType<"Cast_DefaultGenericItemNode", "defaultGenericItemNode">{}
 
 
 def Cast_ProgramPred : CPred<"$_self.isa<Cast_ProgramNodeType>()">;
@@ -365,7 +365,7 @@ def Cast_PostfixExpressionPred : Or<[
   Cast_PostdecrExpressionPred
 ]>;
 
-def Cast_PrimaryExpression : Or<[
+def Cast_PrimaryExpressionPred : Or<[
   Cast_VarExpressionPred,
   Cast_IntExpressionPred,
   Cast_FloatExpressionPred,
