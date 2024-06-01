@@ -20,6 +20,7 @@ class MyCast_Type<string name, string typeMnemonic, list<Trait> traits = []>
 }
 
 def MyCast_ProgramType : MyCast_Type<"MyCast_Program", "program">{}
+def MyCast_ProgramItemType : MyCast_Type<"MyCast_ProgramItem", "programItem">{}
 def MyCast_FunDefType : MyCast_Type<"MyCast_FunDef", "funDef">{}
 def MyCast_FunProtoType : MyCast_Type<"MyCast_FunProto", "funProto">{}
 def MyCast_ArgumentType : MyCast_Type<"MyCast_Argument", "argument">{}
@@ -484,6 +485,13 @@ def MyCast_AssignmentExpressionPred : Or<[
 def MyCast_ExpressionPred : Or<[
   CPred<"$_self.isa<MyCast_ExpressionType>()">,
   MyCast_AssignmentExpressionPred
+]>;
+
+def MyCast_ProgramItemPred : Or<[
+  CPred<"$_self.isa<MyCast_ProgramItemType>()">,
+  MyCast_FunDefPred,
+  MyCast_VarDeclPred,
+  MyCast_TypeDefPred
 ]>;
 
 #endif // MYCAST_TYPES_TD__

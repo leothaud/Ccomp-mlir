@@ -100,21 +100,27 @@ INTCST: [0-9]+;
 STRINGCST: '"' ~["] '"';
 
 program:
-    (funDefs+=funDef | (varDecls+=varDecl SEMI) | (typeDefs+=typeDef SEMI))+;
+    items+=programItem+;
 
-funDef: proto=funProto (SEMI | body=compoundStatement);
+programItem:
+    funDef
+    | varDecl SEMI
+    | typeDef SEMI
+;
+
+funDef: proto=funProto (SEMI | body+=compoundStatement);
 
 funProto: returnType=type name=ID LEFTPARENT (args+=argument (COMMA args+=argument)*)? RIGHTPARENT;
 
 argument: type_=type name=ID (LEFTSBRACKET sizes+=expression RIGHTSBRACKET)*;
 
-varDecl: type_=type decls+=baseVarDecl (COMMA decls+=baseVarDecl);
+varDecl: type_=type decls+=baseVarDecl (COMMA decls+=baseVarDecl)*;
 
-baseVarDecl: name=ID (LEFTSBRACKET sizes+=expression? RIGHTSBRACKET)* (EQUAL value=assignmentExpression)?;
+baseVarDecl: name=ID (LEFTSBRACKET sizes+=expression? RIGHTSBRACKET)* (EQUAL value+=assignmentExpression)?;
 
 typeDef:
-    UNION name=ID? LEFTBRACKET decls+=varDecl (COMMA decls+=varDecl)* RIGHTBRACKET #unionDef
-    | STRUCT name=ID? LEFTBRACKET decls+=varDecl (COMMA decls+=varDecl)* RIGHTBRACKET #structDef
+    UNION name=ID? LEFTBRACKET (decls+=varDecl SEMI)+ RIGHTBRACKET #unionDef
+    | STRUCT name=ID? LEFTBRACKET (decls+=varDecl SEMI)+ RIGHTBRACKET #structDef
     | ENUM name=ID? LEFTBRACKET items+=enumItem (COMMA items+=enumItem)* RIGHTBRACKET #enumDef
     | TYPEDEF bt=type name=ID #aliasDef
 ;

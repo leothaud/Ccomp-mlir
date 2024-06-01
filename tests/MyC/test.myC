@@ -1,0 +1,12 @@
+int variable = 0;
+
+union myUnion {
+    int fieldA = 1;
+    char fieldB;
+};
+
+typedef union myUnion myUnion_t;
+
+int main(int argc, char** argv) {
+    return 0;
+}

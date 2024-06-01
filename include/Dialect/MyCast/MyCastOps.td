@@ -22,15 +22,11 @@ include "mlir/Bytecode/BytecodeOpInterface.td"
 
 
 
-def MyCast_ProgramOp : MyCast_Op<"program", [AttrSizedOperandSegments]> {
-    let arguments = (ins Variadic<Type<MyCast_FunDefPred>>:$funDefs,
-                         Variadic<Type<MyCast_VarDeclPred>>:$varDecls,
-                         Variadic<Type<MyCast_TypeDefPred>>:$typeDefs);
+def MyCast_ProgramOp : MyCast_Op<"program"> {
+    let arguments = (ins Variadic<Type<MyCast_ProgramItemPred>>:$items);
     let results = (outs MyCast_ProgramType:$res);
     let assemblyFormat = [{
-        `(` (`(` $funDefs^ `:` type($funDefs) `)`)?
-        `,` (`(` $varDecls^ `:` type($varDecls) `)`)?
-        `,` ( `(` $typeDefs^ `:` type($typeDefs) `)`)? `)`
+        `(` ($items^ `:` type($items))? `)`
         attr-dict
     }];
 }
