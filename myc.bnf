@@ -1,0 +1,169 @@
+//===----------------------------------------------------------------------===//
+//
+// Under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+
+program ::= (funDef | varDecl ';' | typeDef ';')+;
+
+funDef ::= funProto (';' | compoundStatement);
+funProto ::= type ID '(' (argument (',' argument)*)? ')';
+argument ::= type ID;
+
+typeDef ::= unionDef | structDef | enumDef | aliasDef;
+enumDef ::= 'enum' ID? ('{' ID ('=' constantExpression)? (',' ID ('=' constantExpression)?)* ','? '}')?;
+unionDef ::= 'union' ID? ('{' varDecl (',' varDecl)* ','? '}')?;
+structDef ::= 'struct' ID? ('{' varDecl (',' varDecl)* ','? '}')?;
+aliasDef ::= 'typedef' type ID;
+
+varDecl ::= type ID ('[' expression? ']')* ('=' assignmentExpression)? (',' ID ('[' expression ']')* ('=' assignmentExpression)?)*;
+
+statement ::=   labeledStatement
+              | compoundStatement
+              | varDeclStatement
+              | expressionStatement
+              | ifStatement
+              | switchStatement
+              | whileStatement
+              | doWhileStatement
+              | forStatement
+              | gotoStatement
+              | continueStatement
+              | breakStatement
+              | returnStatement
+;
+
+labeledStatement ::= ID ':' statement;
+compoundStatement ::= '{' statement* '}';
+varDeclStatement ::= varDecl ';';
+expressionStatement ::= expression? ';';
+ifStatement ::= 'if' '(' expression ')' statement ('else' statement)?;
+switchStatement ::= 'switch' '(' expression ')' (('{' switchItem+ '}') | switchItem);
+switchItem ::= switchItemDesignator+ statement;
+switchItemDesignator ::=    'case' expression ':'
+                          | 'default' ':';
+whileStatement ::= 'while' '(' expression ')' statement;
+doWhileStatement ::= 'do' statement 'while' '(' expression ')' ';';
+forStatement ::= 'for' '(' varDecl? ';' expression? ';' expression? ')' statement;
+gotoStatement ::= 'goto' ID ';';
+continueStatement ::= 'continue' ';';
+breakStatement ::= 'break' ';';
+returnStatement ::= 'return' expression? ';';
+
+type ::= typeModifier* baseType '*'*;
+typeModifier ::=  'static'
+                  | 'const'
+;
+
+baseType ::=   'void'
+             | 'char'
+             | 'unsigned' 'char'
+             | 'short'
+             | 'unsigned' 'short'
+             | 'int'
+             | 'unsigned' 'int'
+             | 'unsigned'
+             | 'long'
+             | 'unsigned' 'long'
+             | 'long' 'long'
+             | 'unsigned' 'long' 'long'
+             | 'float'
+             | 'double'
+             | 'enum' ID
+             | 'struct' ID
+             | 'union' ID
+             | ID
+;
+constantExpression ::= conditionalExpression;
+expression ::= assignmentExpression;
+assignmentExpression ::=   conditionalExpression
+                         | unaryExpression '=' assignmentExpression
+                         | unaryExpression '*=' assignmentExpression
+                         | unaryExpression '/=' assignmentExpression
+                         | unaryExpression '%=' assignmentExpression
+                         | unaryExpression '+=' assignmentExpression
+                         | unaryExpression '-=' assignmentExpression
+                         | unaryExpression '<<=' assignmentExpression
+                         | unaryExpression '>>=' assignmentExpression
+                         | unaryExpression '&=' assignmentExpression
+                         | unaryExpression '^=' assignmentExpression
+                         | unaryExpression '|=' assignmentExpression
+;
+
+conditionalExpression ::=   logicalOrExpression
+                          | logicalOrExpression '?' expression ':' conditionalExpression
+;
+
+logicalOrExpression ::= logicalAndExpression ('||' logicalAndExpression)*;
+logicalAndExpression ::= inclusiveOrExpression ('&&' inclusiveOrExpression)*;
+inclusiveOrExpression ::= exclusiveOrExpression ('|' exclusiveOrExpression)*;
+exclusiveOrExpression ::= andExpression ('^' andExpression)*;
+andExpression ::= equalityExpression ('&' equalityExpression)*;
+equalityExpression ::=   relationalExpression
+                       | equalityExpression '==' relationalExpression
+                       | equalityExpression '!=' relationalExpression
+;
+
+relationalExpression ::=   shiftExpression
+                         | relationalExpression '<' shiftExpression
+                         | relationalExpression '>' shiftExpression
+                         | relationalExpression '<=' shiftExpression
+                         | relationalExpression '>=' shiftExpression
+;
+
+shiftExpression ::=   additiveExpression
+                    | shiftExpression '<<' additiveExpression
+                    | shiftExpression '>>' additiveExpression
+;
+
+additiveExpression ::=   multiplicativeExpression
+                       | additiveExpression '+' multiplicativeExpression
+                       | additiveExpression '-' multiplicativeExpression
+;
+
+multiplicativeExpression ::=   castExpression
+                             | multiplicativeExpression '*' castExpression
+                             | multiplicativeExpression '/' castExpression
+                             | multiplicativeExpression '%' castExpression
+;
+
+castExpression ::= '(' type ')' unaryExpression;
+
+unaryExpression ::=   postfixExpression
+                    | '++' unaryExpression
+                    | '--' unaryExpression
+                    | '&' castExpression
+                    | '*' castExpression
+                    | '+' castExpression
+                    | '-' castExpression
+                    | '~' castExpression
+                    | '!' castExpression
+                    | 'sizeof' unaryExpression
+                    | 'sizeof' '(' type ')'
+;
+
+postfixExpression ::=   primaryExpression
+                      | postfixExpression '[' expression ']'
+                      | postfixExpression '(' (assignmentExpression (',' assignmentExpression)*)? ')'
+                      | postfixExpression '.' ID
+                      | postfixExpression '->' ID
+                      | postfixExpression '++'
+                      | postfixExpression '--'
+;
+
+primaryExpression ::=   ID
+                      | INT
+                      | FLOAT
+                      | CHAR
+                      | STRING
+                      | '{' (assignmentExpression (',' assignmentExpression)*)? '}'
+                      | '(' expression ')'
+                      | genericSelection
+;
+
+genericSelection ::= '_Generic' '(' assignmentExpression ',' genericItem (',' genericItem)* ')'
+genericItem ::=   type ':' assignmentExpression
+                | 'default' ':' assignmentExpression
+;

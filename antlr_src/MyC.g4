@@ -1,12 +1,13 @@
-//===------------- Copyright 2024 Dylan Leothaud --------------------------===//
+//===--------------------------MyC.g4--------------------------------------===//
 //
+// Part of the Ccomp project.
 // Under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
-//===----------------------------------------------------------------------===//
+//===------------- Copyright 2024 Dylan Leothaud --------------------------===//
 
-grammar C;
+grammar MyC;
 
 WHITESPACE: [ \t\r\n] -> channel(HIDDEN);
 LINECOMMENT: '//' ~[\n]* -> channel(HIDDEN);
@@ -99,22 +100,22 @@ INTCST: [0-9]+;
 STRINGCST: '"' ~["] '"';
 
 program:
-    (funDef | (varDecl ';') | typeDef)+;
+    (funDefs+=funDef | (varDecls+=varDecl SEMI) | (typeDefs+=typeDef SEMI))+;
 
-funDef: funProto compoundStatement;
+funDef: proto=funProto (SEMI | body=compoundStatement);
 
-funProto: inline=INLINE? returnType=type (stars+=STAR)* LEFTPARENT (args+=argument (COMMA args+=argument)*)? RIGHTPARENT;
+funProto: returnType=type name=ID LEFTPARENT (args+=argument (COMMA args+=argument)*)? RIGHTPARENT;
 
-argument: type_=type stars+=STAR* name=ID (LEFTSBRACKET sizes+=expression RIGHTSBRACKET)*;
+argument: type_=type name=ID (LEFTSBRACKET sizes+=expression RIGHTSBRACKET)*;
 
 varDecl: type_=type decls+=baseVarDecl (COMMA decls+=baseVarDecl);
 
-baseVarDecl: stars+=STAR* name=ID (LEFTSBRACKET sizes+=expression? RIGHTSBRACKET)* (EQUAL value=assignmentExpression)?;
+baseVarDecl: name=ID (LEFTSBRACKET sizes+=expression? RIGHTSBRACKET)* (EQUAL value=assignmentExpression)?;
 
 typeDef:
     UNION name=ID? LEFTBRACKET decls+=varDecl (COMMA decls+=varDecl)* RIGHTBRACKET #unionDef
     | STRUCT name=ID? LEFTBRACKET decls+=varDecl (COMMA decls+=varDecl)* RIGHTBRACKET #structDef
-    | ENUM name=ID? LEFTBRACKET item+=enumItem (COMMA item+=enumItem)* RIGHTBRACKET #enumDef
+    | ENUM name=ID? LEFTBRACKET items+=enumItem (COMMA items+=enumItem)* RIGHTBRACKET #enumDef
     | TYPEDEF bt=type name=ID #aliasDef
 ;
 enumItem: name=ID (EQUAL value=conditionalExpression)?;
@@ -156,12 +157,13 @@ continueStatement: CONTINUE SEMI;
 breakStatement: BREAK SEMI;
 returnStatement: RETURN value=expression? SEMI;
 
-type: modifiers+=typeModifier* bt=baseType;
+type: 
+    baseType
+    | modifiers+=typeModifier* bt=baseType stars+=STAR*;
 typeModifier:
-    EXTERN #externTypeModifier
-    | STATIC #staticTypeModifier
-    | REGISTER #registerTypeModifier
+    STATIC #staticTypeModifier
     | CONST #constTypeModifier
+    | EXTERN #externTypeModifier
     | VOLATILE #volatileTypeModifier
 ;
 
@@ -185,12 +187,12 @@ baseType:
     | name=ID #aliasType
 ;
 
-expression: expr+=assignmentExpression (COMMA expr+=assignmentExpression);
+expression: assignmentExpression;
 assignmentExpression:
     conditionalExpression
     | lvalue=unaryExpression op=assignOperator rvalue=assignmentExpression;
 assignOperator:
-    EQUAL #EqOp
+    EQUAL #eqOp
     | STAREQ #starEqOp
     | DIVEQ #divEqOp
     | MODULOEQ #moduloEqOp
@@ -208,11 +210,31 @@ conditionalExpression:
     | cond=logicalOrExpression QUESTIONMARK thenPart=expression COLON elsePart=conditionalExpression
 ;
 
-logicalOrExpression: expr+=logicalAndExpression (LOR expr+=logicalAndExpression)*;
-logicalAndExpression: expr+=orExpression (LAND expr+=orExpression)*;
-orExpression: expr+=xorExpression (OR expr+=xorExpression)*;
-xorExpression: expr+=andExpression (XOR expr+=andExpression)*;
-andExpression: expr+=equalityExpression (AND expr+=equalityExpression)*;
+logicalOrExpression:
+    logicalAndExpression
+    | expr+=logicalAndExpression (LOR expr+=logicalAndExpression)+
+;
+
+logicalAndExpression:
+    orExpression
+    | expr+=orExpression (LAND expr+=orExpression)+
+;
+
+orExpression:
+    xorExpression
+    | expr+=xorExpression (OR expr+=xorExpression)+
+;
+
+xorExpression:
+    andExpression
+    | expr+=andExpression (XOR expr+=andExpression)+
+;
+
+andExpression:
+    equalityExpression
+    | expr+=equalityExpression (AND expr+=equalityExpression)+
+;
+
 equalityExpression:
     relationalExpression
     | lval=equalityExpression op=equalityOperator rval=relationalExpression
@@ -256,7 +278,10 @@ multiplicativeOperator:
     | DIV #divOperator
     | MODULO #moduloOperator
 ;
-castExpression: (LEFTPARENT types+=type RIGHTPARENT)* expr=unaryExpression;
+castExpression:
+    unaryExpression
+    | LEFTPARENT newType=type RIGHTPARENT expr=unaryExpression;
+
 unaryExpression:
     postfixExpression
     | sizeofExpression

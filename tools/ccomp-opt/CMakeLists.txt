@@ -4,9 +4,10 @@ set(LIBS
         ${dialect_libs}
         ${conversion_libs}
         MLIROptLib
-        CastDialect
+        MyCastDialect
         )
 add_llvm_executable(ccomp-opt ccomp-opt.cpp)
 
 llvm_update_compile_flags(ccomp-opt)
 target_link_libraries(ccomp-opt PRIVATE ${LIBS})
+install(TARGETS ccomp-opt DESTINATION bin)

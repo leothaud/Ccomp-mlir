@@ -1,4 +1,4 @@
-//===------------------------ccomp-opt.cpp---------------------------------===//
+//===-------------ccompLspServerMain.cpp-----------------------------------===//
 //
 // Part of the Ccomp project.
 // Under the Apache License v2.0 with LLVM Exceptions.
@@ -22,6 +22,11 @@
 #include "Dialect/MyCast/MyCastDialect.h"
 #include "Dialect/MyCast/MyCastOpsDialect.cpp.inc"
 #include "Dialect/initAllDialect.h"
+#include "mlir/IR/MLIRContext.h"
+#include "mlir/InitAllDialects.h"
+#include "mlir/InitAllExtensions.h"
+#include "mlir/Tools/mlir-lsp-server/MlirLspServerMain.h"
+#include "mlir/Tools/mlir-opt/MlirOptMain.h"
 
 int main(int argc, char **argv) {
   mlir::registerAllPasses();
@@ -30,6 +35,5 @@ int main(int argc, char **argv) {
   mlir::registerAllDialects(registry);
   ccomp::registerAllDialects(registry);
 
-  return mlir::asMainReturnCode(
-      mlir::MlirOptMain(argc, argv, "Ccomp optimizer driver\n", registry));
+    return failed(mlir::MlirLspServerMain(argc, argv, registry));
 }
