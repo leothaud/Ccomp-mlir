@@ -80,8 +80,8 @@ MyCFrontendVisitor::visitFunProto(MyCParser::FunProtoContext *context) {
 
   result.program = returnTypeRes.program + argsRes.program;
   result.program += result.vars + " = myCast.funProto ( (" +
-                    returnTypeRes.vars + " : " + returnTypeRes.types + "), " +
-                    context->name->getText() + ", ";
+                    returnTypeRes.vars + " : " + returnTypeRes.types + "), \"" +
+                    context->name->getText() + "\", ";
   if (!context->args.empty())
     result.program += "(" + argsRes.vars + " : " + argsRes.types + ")";
   result.program += ")\n";
@@ -105,8 +105,8 @@ MyCFrontendVisitor::visitArgument(MyCParser::ArgumentContext *context) {
 
   result.program = typeRes.program + sizesRes.program;
   result.program += result.vars + " = myCast.argument ( (" + typeRes.vars +
-                    " : " + typeRes.types + "), " + context->name->getText() +
-                    ", ";
+                    " : " + typeRes.types + "), \"" + context->name->getText() +
+                    "\", ";
   if (!context->sizes.empty())
     result.program += "(" + sizesRes.vars + " : " + sizesRes.types + ")";
   result.program += ")\n";
@@ -155,7 +155,7 @@ MyCFrontendVisitor::visitBaseVarDecl(MyCParser::BaseVarDeclContext *context) {
   result.program = sizesRes.program + valueRes.program;
 
   result.program +=
-      result.vars + " = myCast.baseVarDecl (" + context->name->getText() + ", ";
+      result.vars + " = myCast.baseVarDecl (\"" + context->name->getText() + "\", ";
   if (!context->sizes.empty())
     result.program += "(" + sizesRes.vars + " : " + sizesRes.types + ")";
   result.program += ", ";
@@ -198,7 +198,7 @@ MyCFrontendVisitor::visitUnionDef(MyCParser::UnionDefContext *context) {
   result.types = "!myCast.unionDef";
   result.program = declsRes.program;
   result.program +=
-      result.vars + " = myCast.unionDef (" + context->name->getText() + +",";
+      result.vars + " = myCast.unionDef (\"" + context->name->getText() + +"\",";
   if (!context->decls.empty())
     result.program += "(" + declsRes.vars + " : " + declsRes.types + ")";
   result.program += ")\n";
@@ -219,7 +219,7 @@ MyCFrontendVisitor::visitStructDef(MyCParser::StructDefContext *context) {
   result.types = "!myCast.structDef";
   result.program = declsRes.program;
   result.program +=
-      result.vars + " = myCast.structDef (" + context->name->getText() + +",";
+      result.vars + " = myCast.structDef (\"" + context->name->getText() + +"\",";
   if (!context->decls.empty())
     result.program += "(" + declsRes.vars + " : " + declsRes.types + ")";
   result.program += ")\n";
@@ -239,7 +239,7 @@ std::any MyCFrontendVisitor::visitEnumDef(MyCParser::EnumDefContext *context) {
   result.types = "!myCast.enumDef";
   result.program = itemsRes.program;
   result.program +=
-      result.vars + " = myCast.enumDef (" + context->name->getText() + +",";
+      result.vars + " = myCast.enumDef (\"" + context->name->getText() + +"\",";
   if (!context->items.empty())
     result.program += "(" + itemsRes.vars + " : " + itemsRes.types + ")";
   result.program += ")\n";
@@ -255,8 +255,8 @@ MyCFrontendVisitor::visitAliasDef(MyCParser::AliasDefContext *context) {
   result.vars = "%" + std::to_string(getNextVarIndex());
   result.types = "!myCast.aliasDef";
   result.program = typeRes.program + result.vars + " = myCast.aliasDef ((" +
-                   typeRes.vars + " : " + typeRes.types + ")," +
-                   context->name->getText() + ")";
+                   typeRes.vars + " : " + typeRes.types + "),\"" +
+                   context->name->getText() + "\")";
 
   return result;
 }
@@ -271,8 +271,8 @@ MyCFrontendVisitor::visitEnumItem(MyCParser::EnumItemContext *context) {
         std::any_cast<VisitRes>(visitConditionalExpression(context->value));
   result.vars = "%" + std::to_string(getNextVarIndex());
   result.types = "!myCast.enumItem";
-  result.program = valueRes.program + result.vars + " = myCast.enumItem (" +
-                   context->name->getText() + ", ";
+  result.program = valueRes.program + result.vars + " = myCast.enumItem (\"" +
+                   context->name->getText() + "\", ";
   if (context->value != nullptr)
     result.program += "(" + valueRes.vars + " : " + valueRes.types + ")";
   result.program += ")\n";
@@ -318,8 +318,8 @@ std::any MyCFrontendVisitor::visitLabeledStatement(
   result.vars = "%" + std::to_string(getNextVarIndex());
   result.types = "!myCast.labeledStatement";
   result.program = stmtRes.program + result.vars +
-                   " = myCast.labeledStatemet (" + context->label->getText() +
-                   ", (" + stmtRes.vars + " : " + stmtRes.types + ")\n";
+                   " = myCast.labeledStatemet (\"" + context->label->getText() +
+                   "\", (" + stmtRes.vars + " : " + stmtRes.types + ")\n";
   return result;
 }
 
@@ -503,8 +503,8 @@ std::any MyCFrontendVisitor::visitGotoStatement(
   VisitRes result;
   result.vars = "%" + std::to_string(getNextVarIndex());
   result.types = "!myCast.gotoStatement";
-  result.program = result.vars + " = myCast.gotoStatement (" +
-                   context->label->getText() + ")\n";
+  result.program = result.vars + " = myCast.gotoStatement (\"" +
+                   context->label->getText() + "\")\n";
   return result;
 }
 
@@ -537,7 +537,7 @@ std::any MyCFrontendVisitor::visitReturnStatement(
   result.program =
       valueRes.program + result.vars + " = myCast.returnStatement (";
   if (context->value != nullptr)
-    result.program += "(" + valueRes.vars + " : " + valueRes.types + ")";
+    result.program += valueRes.vars + " : " + valueRes.types;
   result.program += ")\n";
   return result;
 }
@@ -792,7 +792,7 @@ MyCFrontendVisitor::visitEnumType(MyCParser::EnumTypeContext *context) {
   result.vars = "%" + std::to_string(getNextVarIndex());
   result.types = "!myCast.enumType";
   result.program =
-      result.vars + " = myCast.enumType (" + context->name->getText() + ")\n";
+      result.vars + " = myCast.enumType (\"" + context->name->getText() + "\")\n";
   return result;
 }
 
@@ -802,7 +802,7 @@ MyCFrontendVisitor::visitStructType(MyCParser::StructTypeContext *context) {
   result.vars = "%" + std::to_string(getNextVarIndex());
   result.types = "!myCast.structType";
   result.program =
-      result.vars + " = myCast.structType (" + context->name->getText() + ")\n";
+      result.vars + " = myCast.structType (\"" + context->name->getText() + "\")\n";
   return result;
 }
 
@@ -812,7 +812,7 @@ MyCFrontendVisitor::visitUnionType(MyCParser::UnionTypeContext *context) {
   result.vars = "%" + std::to_string(getNextVarIndex());
   result.types = "!myCast.unionType";
   result.program =
-      result.vars + " = myCast.unionType (" + context->name->getText() + ")\n";
+      result.vars + " = myCast.unionType (\"" + context->name->getText() + "\")\n";
   return result;
 }
 
@@ -822,7 +822,7 @@ MyCFrontendVisitor::visitAliasType(MyCParser::AliasTypeContext *context) {
   result.vars = "%" + std::to_string(getNextVarIndex());
   result.types = "!myCast.aliasType";
   result.program =
-      result.vars + " = myCast.aliasType (" + context->name->getText() + ")\n";
+      result.vars + " = myCast.aliasType (\"" + context->name->getText() + "\")\n";
   return result;
 }
 
@@ -1584,7 +1584,7 @@ std::any MyCFrontendVisitor::visitFieldExpression(
   result.types = "!myCast.fieldExpression";
   result.program = exprRes.program + result.vars +
                    " = myCast.fieldExpression ((" + exprRes.vars + " : " +
-                   exprRes.types + "), " + context->field->getText() + ")\n";
+                   exprRes.types + "), \"" + context->field->getText() + "\")\n";
   return result;
 }
 
@@ -1616,7 +1616,7 @@ std::any MyCFrontendVisitor::visitPtrFieldExpression(
   result.types = "!myCast.ptrFieldExpression";
   result.program = exprRes.program + result.vars +
                    " = myCast.ptrFieldExpression ((" + exprRes.vars + " : " +
-                   exprRes.types + "), " + context->field->getText() + ")\n";
+                   exprRes.types + "), \"" + context->field->getText() + "\")\n";
   return result;
 }
 
@@ -1653,7 +1653,7 @@ std::any MyCFrontendVisitor::visitIntExpression(
   VisitRes result;
   result.vars = "%" + std::to_string(getNextVarIndex());
   result.types = "!myCast.intExpression";
-  result.program = result.vars + " = myCast.intExpression(" +
+  result.program = result.vars + " = myCast.intExpression (" +
                    context->val->getText() + ")\n";
   return result;
 }

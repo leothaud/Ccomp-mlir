@@ -1,5 +1,7 @@
 int variable = 0;
 
+float floatVar = 3.14;
+
 union myUnion {
     int fieldA = 1, fieldB;
     char fieldC;

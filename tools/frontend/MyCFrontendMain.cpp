@@ -4,20 +4,27 @@
 #include <iostream>
 
 int main(int argc, char** argv) {
-  if (argc != 2)
+  if (argc != 3)
   {
-    std::cerr << "Usage: " << argv[0] << " [MyC file]." << std::endl;
+    std::cerr << "Usage: " << argv[0] << " [MyC file] [output file]." << std::endl;
     return 1;
   }
 
-  std::ifstream stream(argv[1]);
-  if (!stream.is_open())
+  std::ifstream inStream(argv[1]);
+  if (!inStream.is_open())
   {
     std::cerr << "Can't open file " << argv[1] << ": " << strerror(errno);
     exit(1);
   }
+  std::ofstream outStream(argv[2]);
+  if (!outStream.is_open())
+  {
+    std::cerr << "Can't open file " << argv[2] << ": " << strerror(errno);
+    exit(1);
+  }
 
-  antlr4::ANTLRInputStream input(stream);
+
+  antlr4::ANTLRInputStream input(inStream);
   MyCLexer lexer(&input);
   
   antlr4::CommonTokenStream tokens(&lexer);
@@ -28,10 +35,9 @@ int main(int argc, char** argv) {
 
   VisitRes res = std::any_cast<VisitRes>(visitor.visitProgram(program));
 
-  std::cout << "vars = " << res.vars << std::endl
-            << "types = " << res.types << std::endl
-            << "program = {" << std::endl << res.program
-            << std::endl << "}" << std::endl;
+  outStream << res.program;
+  inStream.close();
+  outStream.close();
 
   return 0;
 }
