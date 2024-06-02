@@ -12,6 +12,7 @@
 
 #include <string>
 
+#include "MyCParser.h"
 #include "MyCVisitor.h"
 
 class MyCFrontendVisitor : public antlr4::tree::AbstractParseTreeVisitor {
@@ -24,7 +25,7 @@ public:
    * Visit parse trees produced by MyCParser.
    */
   std::any visitProgram(MyCParser::ProgramContext *context);
-  
+
   std::any visitProgramItem(MyCParser::ProgramItemContext *context);
 
   std::any visitFunDef(MyCParser::FunDefContext *context);
@@ -64,6 +65,8 @@ public:
 
   std::any visitSwitchStatement(MyCParser::SwitchStatementContext *context);
 
+  std::any visitSwitchItem(MyCParser::SwitchItemContext *context);
+
   std::any visitSwitchCaseItem(MyCParser::SwitchCaseItemContext *context);
 
   std::any visitSwitchDefaultItem(MyCParser::SwitchDefaultItemContext *context);
@@ -84,6 +87,8 @@ public:
 
   std::any visitType(MyCParser::TypeContext *context);
 
+  std::any visitTypeModifier(MyCParser::TypeModifierContext *context);
+
   std::any
   visitStaticTypeModifier(MyCParser::StaticTypeModifierContext *context);
 
@@ -94,6 +99,8 @@ public:
 
   std::any
   visitVolatileTypeModifier(MyCParser::VolatileTypeModifierContext *context);
+
+  std::any visitBaseType(MyCParser::BaseTypeContext *context);
 
   std::any visitVoidType(MyCParser::VoidTypeContext *context);
 
@@ -135,6 +142,8 @@ public:
   std::any
   visitAssignmentExpression(MyCParser::AssignmentExpressionContext *context);
 
+  std::any visitAssignOperator(MyCParser::AssignOperatorContext *context);
+
   std::any visitEqOp(MyCParser::EqOpContext *context);
 
   std::any visitStarEqOp(MyCParser::StarEqOpContext *context);
@@ -175,12 +184,17 @@ public:
   std::any
   visitEqualityExpression(MyCParser::EqualityExpressionContext *context);
 
+  std::any visitEqualityOperator(MyCParser::EqualityOperatorContext *context);
+
   std::any visitEqualOperator(MyCParser::EqualOperatorContext *context);
 
   std::any visitNotEqualOperator(MyCParser::NotEqualOperatorContext *context);
 
   std::any
   visitRelationalExpression(MyCParser::RelationalExpressionContext *context);
+
+  std::any
+  visitRelationalOperator(MyCParser::RelationalOperatorContext *context);
 
   std::any visitGeOperator(MyCParser::GeOperatorContext *context);
 
@@ -192,6 +206,8 @@ public:
 
   std::any visitShiftExpression(MyCParser::ShiftExpressionContext *context);
 
+  std::any visitShiftOperator(MyCParser::ShiftOperatorContext *context);
+
   std::any visitLshiftOperator(MyCParser::LshiftOperatorContext *context);
 
   std::any visitRshiftOperator(MyCParser::RshiftOperatorContext *context);
@@ -199,12 +215,17 @@ public:
   std::any
   visitAdditiveExpression(MyCParser::AdditiveExpressionContext *context);
 
+  std::any visitAdditiveOperator(MyCParser::AdditiveOperatorContext *context);
+
   std::any visitPlusOperator(MyCParser::PlusOperatorContext *context);
 
   std::any visitMinusOperator(MyCParser::MinusOperatorContext *context);
 
   std::any visitMultiplicativeExpression(
       MyCParser::MultiplicativeExpressionContext *context);
+
+  std::any visitMultiplicativeOperator(
+      MyCParser::MultiplicativeOperatorContext *context);
 
   std::any visitMultOperator(MyCParser::MultOperatorContext *context);
 
@@ -217,6 +238,8 @@ public:
   std::any visitUnaryExpression(MyCParser::UnaryExpressionContext *context);
 
   std::any visitUnopExpression(MyCParser::UnopExpressionContext *context);
+
+  std::any visitUnaryOperator(MyCParser::UnaryOperatorContext *context);
 
   std::any visitIncrOperator(MyCParser::IncrOperatorContext *context);
 
@@ -236,6 +259,8 @@ public:
 
   std::any visitSizeofExpression(MyCParser::SizeofExpressionContext *context);
 
+  std::any visitPostfixExpression(MyCParser::PostfixExpressionContext *context);
+
   std::any visitPrimaryPostfixExpression(
       MyCParser::PrimaryPostfixExpressionContext *context);
 
@@ -254,6 +279,8 @@ public:
   std::any
   visitPtrFieldExpression(MyCParser::PtrFieldExpressionContext *context);
 
+  std::any visitPrimaryExpression(MyCParser::PrimaryExpressionContext *context);
+
   std::any visitVarExpression(MyCParser::VarExpressionContext *context);
 
   std::any visitIntExpression(MyCParser::IntExpressionContext *context);
@@ -266,6 +293,8 @@ public:
   visitStructureExpression(MyCParser::StructureExpressionContext *context);
 
   std::any visitGenericExpression(MyCParser::GenericExpressionContext *context);
+
+  std::any visitGenericItem(MyCParser::GenericItemContext *context);
 
   std::any visitTypeGenericItem(MyCParser::TypeGenericItemContext *context);
 
@@ -288,9 +317,12 @@ public:
       : vars(vars), types(types), program(program) {}
 
   VisitRes operator+(const VisitRes &other) const {
-    return VisitRes((this->vars.compare("") == 0) ? other.vars : (this->vars + ", " + other.vars),
-                    (this->vars.compare("") == 0) ? other.types : (this->types + ", " + other.types),
-                    this->program + other.program);
+    return VisitRes(
+        (this->vars.compare("") == 0) ? other.vars
+                                      : (this->vars + ", " + other.vars),
+        (this->vars.compare("") == 0) ? other.types
+                                      : (this->types + ", " + other.types),
+        this->program + other.program);
   }
 
   VisitRes &operator+=(const VisitRes &other) {

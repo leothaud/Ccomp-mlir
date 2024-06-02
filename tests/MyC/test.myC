@@ -1,8 +1,8 @@
 int variable = 0;
 
 union myUnion {
-    int fieldA = 1;
-    char fieldB;
+    int fieldA = 1, fieldB;
+    char fieldC;
 };
 
 typedef union myUnion myUnion_t;

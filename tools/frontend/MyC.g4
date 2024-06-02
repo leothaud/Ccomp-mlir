@@ -164,7 +164,7 @@ breakStatement: BREAK SEMI;
 returnStatement: RETURN value=expression? SEMI;
 
 type: 
-    baseType
+    child=baseType
     | modifiers+=typeModifier* bt=baseType stars+=STAR*;
 typeModifier:
     STATIC #staticTypeModifier
@@ -195,7 +195,7 @@ baseType:
 
 expression: assignmentExpression;
 assignmentExpression:
-    conditionalExpression
+    child=conditionalExpression
     | lvalue=unaryExpression op=assignOperator rvalue=assignmentExpression;
 assignOperator:
     EQUAL #eqOp
@@ -212,37 +212,37 @@ assignOperator:
 ;
 
 conditionalExpression:
-    logicalOrExpression
+    child=logicalOrExpression
     | cond=logicalOrExpression QUESTIONMARK thenPart=expression COLON elsePart=conditionalExpression
 ;
 
 logicalOrExpression:
-    logicalAndExpression
+    child=logicalAndExpression
     | expr+=logicalAndExpression (LOR expr+=logicalAndExpression)+
 ;
 
 logicalAndExpression:
-    orExpression
+    child=orExpression
     | expr+=orExpression (LAND expr+=orExpression)+
 ;
 
 orExpression:
-    xorExpression
+    child=xorExpression
     | expr+=xorExpression (OR expr+=xorExpression)+
 ;
 
 xorExpression:
-    andExpression
+    child=andExpression
     | expr+=andExpression (XOR expr+=andExpression)+
 ;
 
 andExpression:
-    equalityExpression
+    child=equalityExpression
     | expr+=equalityExpression (AND expr+=equalityExpression)+
 ;
 
 equalityExpression:
-    relationalExpression
+    child=relationalExpression
     | lval=equalityExpression op=equalityOperator rval=relationalExpression
 ;
 equalityOperator:
@@ -250,7 +250,7 @@ equalityOperator:
     | NOTEQ #notEqualOperator
 ;
 relationalExpression:
-    shiftExpression
+    child=shiftExpression
     | lval=relationalExpression op=relationalOperator rval=shiftExpression
 ;
 relationalOperator:
@@ -260,7 +260,7 @@ relationalOperator:
     | LT #ltOperator
 ;
 shiftExpression:
-    additiveExpression
+    child=additiveExpression
     | lval=shiftExpression op=shiftOperator rval=additiveExpression
 ;
 shiftOperator:
@@ -268,7 +268,7 @@ shiftOperator:
     | RSHIFT #rshiftOperator
 ;
 additiveExpression:
-    multiplicativeExpression
+    child=multiplicativeExpression
     | lval=additiveExpression op=additiveOperator rval=multiplicativeExpression
 ;
 additiveOperator:
@@ -276,7 +276,7 @@ additiveOperator:
     | MINUS #minusOperator
 ;
 multiplicativeExpression:
-    castExpression
+    child=castExpression
     | lval=multiplicativeExpression op=multiplicativeOperator rval=castExpression
 ;
 multiplicativeOperator:
@@ -285,7 +285,7 @@ multiplicativeOperator:
     | MODULO #moduloOperator
 ;
 castExpression:
-    unaryExpression
+    child=unaryExpression
     | LEFTPARENT newType=type RIGHTPARENT expr=unaryExpression;
 
 unaryExpression:
@@ -320,7 +320,7 @@ primaryExpression:
     | val=FLOATCST #floatExpression
     | LEFTPARENT expr=expression RIGHTPARENT #parentExpression
     | LEFTBRACKET (val+=assignmentExpression (COMMA val+=assignmentExpression)*)? RIGHTBRACKET #structureExpression
-    | GENERIC LEFTPARENT expr=assignmentExpression COMMA cases+=genericItem (COMMA cases+=genericItem)* RIGHTPARENT #genericExpression
+    | GENERIC LEFTPARENT expr=assignmentExpression (COMMA cases+=genericItem)+ RIGHTPARENT #genericExpression
 ;
 genericItem:
     type_=type COLON body=assignmentExpression #typeGenericItem
