@@ -1,4 +1,4 @@
-//===---------------------MyCastDialect.h----------------------------------===//
+//===---------------------------MyCcdfgDialect.h---------------------------===//
 //
 // Part of the Ccomp project.
 // Under the Apache License v2.0 with LLVM Exceptions.
@@ -7,10 +7,10 @@
 //
 //===------------- Copyright 2024 Dylan Leothaud --------------------------===//
 
-#ifndef MYCAST_MYCASTDIALECT_H
-#define MYCAST_MYCASTDIALECT_H
+#ifndef MYCCDFG_MYCCDFGDIALECT_H
+#define MYCCDFG_MYCCDFGDIALECT_H
 
 #include "mlir/IR/Dialect.h"
-#include "Dialect/MyCast/MyCastOpsDialect.h.inc"
+#include "Dialect/MyCcdfg/MyCcdfgOpsDialect.h.inc"
 
-#endif // MYCAST_MYCASTDIALECT_H
+#endif // MYCCDFG_MYCCDFGDIALECT_H

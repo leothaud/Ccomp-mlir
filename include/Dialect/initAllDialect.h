@@ -11,12 +11,14 @@
 #define CCOMP_INITALLDIALECT_H__
 
 #include "Dialect/MyCast/MyCastDialect.h"
+#include "Dialect/MyCcdfg/MyCcdfgDialect.h"
 
 namespace ccomp {
 
     inline void registerAllDialects(mlir::DialectRegistry &registry) {
         registry.insert<
-            ccomp::myCast::MyCastDialect
+            ccomp::myCast::MyCastDialect,
+            ccomp::myCcdfg::MyCcdfgDialect
         >();
     }
 

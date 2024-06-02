@@ -1,4 +1,4 @@
-//===---------------------MyCastOps.h--------------------------------------===//
+//===-----------------------------MyCcdfgOps.h-----------------------------===//
 //
 // Part of the Ccomp project.
 // Under the Apache License v2.0 with LLVM Exceptions.
@@ -7,8 +7,8 @@
 //
 //===------------- Copyright 2024 Dylan Leothaud --------------------------===//
 
-#ifndef MYCAST_MYCASTOPS_H
-#define MYCAST_MYCASTOPS_H
+#ifndef MYCCDFG_MYCCDFGOPS_H
+#define MYCCDFG_MYCCDFGOPS_H
 
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Dialect.h"
@@ -18,9 +18,9 @@
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/Bytecode/BytecodeOpInterface.h"
 
-#include "Dialect/MyCast/MyCastOpsTypes.h"
+#include "Dialect/MyCcdfg/MyCcdfgOpsTypes.h"
 
 #define GET_OP_CLASSES
-#include "Dialect/MyCast/MyCastOps.h.inc"
+#include "Dialect/MyCcdfg/MyCcdfgOps.h.inc"
 
-#endif // MYCAST_MYCASTOPS_H
+#endif // MYCCDFG_MYCCDFGOPS_H

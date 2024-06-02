@@ -5,6 +5,7 @@ set(LIBS
         ${conversion_libs}
         MLIROptLib
         MyCastDialect
+        MyCcdfgDialect
         )
 add_llvm_executable(ccomp-opt ccomp-opt.cpp)
 

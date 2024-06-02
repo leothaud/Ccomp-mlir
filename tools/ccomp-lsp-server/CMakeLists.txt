@@ -15,7 +15,9 @@ set(LIBS
         MLIRSupport
         MLIRIR
         MyCastDialect
+        MyCcdfgDialect
 )
+
 add_llvm_executable(ccomp-lsp-server ccompLspServerMain.cpp)
 llvm_update_compile_flags(ccomp-lsp-server)
 target_link_libraries(ccomp-lsp-server PRIVATE ${LIBS})

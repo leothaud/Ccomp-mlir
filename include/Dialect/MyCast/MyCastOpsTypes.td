@@ -149,49 +149,49 @@ def MyCast_TypeGenericItemType : MyCast_Type<"MyCast_TypeGenericItem", "typeGene
 def MyCast_DefaultGenericItemType : MyCast_Type<"MyCast_DefaultGenericItem", "defaultGenericItem">{}
 
 
-def MyCast_ProgramPred : CPred<"$_self.isa<MyCast_ProgramType>()">;
-def MyCast_FunDefPred : CPred<"$_self.isa<MyCast_FunDefType>()">;
-def MyCast_FunProtoPred : CPred<"$_self.isa<MyCast_FunProtoType>()">;
-def MyCast_ArgumentPred : CPred<"$_self.isa<MyCast_ArgumentType>()">;
-def MyCast_EnumDefPred : CPred<"$_self.isa<MyCast_EnumDefType>()">;
-def MyCast_EnumItemPred : CPred<"$_self.isa<MyCast_EnumItemType>()">;
-def MyCast_UnionDefPred : CPred<"$_self.isa<MyCast_UnionDefType>()">;
-def MyCast_StructDefPred : CPred<"$_self.isa<MyCast_StructDefType>()">;
-def MyCast_AliasDefPred : CPred<"$_self.isa<MyCast_AliasDefType>()">;
+def MyCast_ProgramPred : CPred<"mlir::isa<MyCast_ProgramType>($_self)">;
+def MyCast_FunDefPred : CPred<"mlir::isa<MyCast_FunDefType>($_self)">;
+def MyCast_FunProtoPred : CPred<"mlir::isa<MyCast_FunProtoType>($_self)">;
+def MyCast_ArgumentPred : CPred<"mlir::isa<MyCast_ArgumentType>($_self)">;
+def MyCast_EnumDefPred : CPred<"mlir::isa<MyCast_EnumDefType>($_self)">;
+def MyCast_EnumItemPred : CPred<"mlir::isa<MyCast_EnumItemType>($_self)">;
+def MyCast_UnionDefPred : CPred<"mlir::isa<MyCast_UnionDefType>($_self)">;
+def MyCast_StructDefPred : CPred<"mlir::isa<MyCast_StructDefType>($_self)">;
+def MyCast_AliasDefPred : CPred<"mlir::isa<MyCast_AliasDefType>($_self)">;
 def MyCast_TypeDefPred : Or<[
-  CPred<"$_self.isa<MyCast_TypeDefType>()">,
+  CPred<"mlir::isa<MyCast_TypeDefType>($_self)">,
   MyCast_UnionDefPred,
   MyCast_StructDefPred,
   MyCast_EnumDefPred,
   MyCast_AliasDefPred
 ]>;
 
-def MyCast_VarDeclPred : CPred<"$_self.isa<MyCast_VarDeclType>()">;
-def MyCast_BaseVarDeclPred : CPred<"$_self.isa<MyCast_BaseVarDeclType>()">;
+def MyCast_VarDeclPred : CPred<"mlir::isa<MyCast_VarDeclType>($_self)">;
+def MyCast_BaseVarDeclPred : CPred<"mlir::isa<MyCast_BaseVarDeclType>($_self)">;
 
-def MyCast_LabeledStatementPred : CPred<"$_self.isa<MyCast_LabeledStatementType>()">;
-def MyCast_CompoundStatementPred : CPred<"$_self.isa<MyCast_CompoundStatementType>()">;
-def MyCast_VarDeclStatementPred : CPred<"$_self.isa<MyCast_VarDeclStatementType>()">;
-def MyCast_ExpressionStatementPred : CPred<"$_self.isa<MyCast_ExpressionStatementType>()">;
-def MyCast_IfStatementPred : CPred<"$_self.isa<MyCast_IfStatementType>()">;
-def MyCast_SwitchStatementPred : CPred<"$_self.isa<MyCast_SwitchStatementType>()">;
+def MyCast_LabeledStatementPred : CPred<"mlir::isa<MyCast_LabeledStatementType>($_self)">;
+def MyCast_CompoundStatementPred : CPred<"mlir::isa<MyCast_CompoundStatementType>($_self)">;
+def MyCast_VarDeclStatementPred : CPred<"mlir::isa<MyCast_VarDeclStatementType>($_self)">;
+def MyCast_ExpressionStatementPred : CPred<"mlir::isa<MyCast_ExpressionStatementType>($_self)">;
+def MyCast_IfStatementPred : CPred<"mlir::isa<MyCast_IfStatementType>($_self)">;
+def MyCast_SwitchStatementPred : CPred<"mlir::isa<MyCast_SwitchStatementType>($_self)">;
 
-def MyCast_SwitchCaseItemPred : CPred<"$_self.isa<MyCast_SwitchCaseItemType>()">;
-def MyCast_SwitchDefaultItemPred : CPred<"$_self.isa<MyCast_SwitchDefaultItemType>()">;
+def MyCast_SwitchCaseItemPred : CPred<"mlir::isa<MyCast_SwitchCaseItemType>($_self)">;
+def MyCast_SwitchDefaultItemPred : CPred<"mlir::isa<MyCast_SwitchDefaultItemType>($_self)">;
 def MyCast_SwitchItemPred : Or<[
-  CPred<"$_self.isa<MyCast_SwitchItemType>()">,
+  CPred<"mlir::isa<MyCast_SwitchItemType>($_self)">,
   MyCast_SwitchCaseItemPred,
   MyCast_SwitchDefaultItemPred
 ]>;
-def MyCast_WhileStatementPred : CPred<"$_self.isa<MyCast_WhileStatementType>()">;
-def MyCast_DoWhileStatementPred : CPred<"$_self.isa<MyCast_DoWhileStatementType>()">;
-def MyCast_ForStatementPred : CPred<"$_self.isa<MyCast_ForStatementType>()">;
-def MyCast_GotoStatementPred : CPred<"$_self.isa<MyCast_GotoStatementType>()">;
-def MyCast_ContinueStatementPred : CPred<"$_self.isa<MyCast_ContinueStatementType>()">;
-def MyCast_BreakStatementPred : CPred<"$_self.isa<MyCast_BreakStatementType>()">;
-def MyCast_ReturnStatementPred : CPred<"$_self.isa<MyCast_ReturnStatementType>()">;
+def MyCast_WhileStatementPred : CPred<"mlir::isa<MyCast_WhileStatementType>($_self)">;
+def MyCast_DoWhileStatementPred : CPred<"mlir::isa<MyCast_DoWhileStatementType>($_self)">;
+def MyCast_ForStatementPred : CPred<"mlir::isa<MyCast_ForStatementType>($_self)">;
+def MyCast_GotoStatementPred : CPred<"mlir::isa<MyCast_GotoStatementType>($_self)">;
+def MyCast_ContinueStatementPred : CPred<"mlir::isa<MyCast_ContinueStatementType>($_self)">;
+def MyCast_BreakStatementPred : CPred<"mlir::isa<MyCast_BreakStatementType>($_self)">;
+def MyCast_ReturnStatementPred : CPred<"mlir::isa<MyCast_ReturnStatementType>($_self)">;
 def MyCast_StatementPred : Or<[
-  CPred<"$_self.isa<MyCast_StatementType>()">,
+  CPred<"mlir::isa<MyCast_StatementType>($_self)">,
   MyCast_LabeledStatementPred,
   MyCast_CompoundStatementPred,
   MyCast_VarDeclStatementPred,
@@ -207,36 +207,36 @@ def MyCast_StatementPred : Or<[
   MyCast_ReturnStatementPred
 ]>;
 
-def MyCast_StaticTypeModifierPred : CPred<"$_self.isa<MyCast_StaticTypeModifierType>()">;
-def MyCast_ConstTypeModifierPred : CPred<"$_self.isa<MyCast_ConstTypeModifierType>()">;
-def MyCast_ExternTypeModifierPred : CPred<"$_self.isa<MyCast_ExternTypeModifierType>()">;
-def MyCast_VolatileTypeModifierPred : CPred<"$_self.isa<MyCast_VolatileTypeModifierType>()">;
+def MyCast_StaticTypeModifierPred : CPred<"mlir::isa<MyCast_StaticTypeModifierType>($_self)">;
+def MyCast_ConstTypeModifierPred : CPred<"mlir::isa<MyCast_ConstTypeModifierType>($_self)">;
+def MyCast_ExternTypeModifierPred : CPred<"mlir::isa<MyCast_ExternTypeModifierType>($_self)">;
+def MyCast_VolatileTypeModifierPred : CPred<"mlir::isa<MyCast_VolatileTypeModifierType>($_self)">;
 def MyCast_TypeModifierPred : Or<[
-  CPred<"$_self.isa<MyCast_TypeModifierType>()">,
+  CPred<"mlir::isa<MyCast_TypeModifierType>($_self)">,
   MyCast_StaticTypeModifierPred,
   MyCast_ConstTypeModifierPred,
   MyCast_ExternTypeModifierPred,
   MyCast_VolatileTypeModifierPred
 ]>;
-def MyCast_VoidTypePred : CPred<"$_self.isa<MyCast_VoidTypeType>()">;
-def MyCast_UnsignedLongLongTypePred : CPred<"$_self.isa<MyCast_UnsignedLongLongTypeType>()">;
-def MyCast_UnsignedLongTypePred : CPred<"$_self.isa<MyCast_UnsignedLongTypeType>()">;
-def MyCast_UnsignedShortTypePred : CPred<"$_self.isa<MyCast_UnsignedShortTypeType>()">;
-def MyCast_UnsignedCharTypePred : CPred<"$_self.isa<MyCast_UnsignedCharTypeType>()">;
-def MyCast_UnsignedIntTypePred : CPred<"$_self.isa<MyCast_UnsignedIntTypeType>()">;
-def MyCast_CharTypePred : CPred<"$_self.isa<MyCast_CharTypeType>()">;
-def MyCast_ShortTypePred : CPred<"$_self.isa<MyCast_ShortTypeType>()">;
-def MyCast_IntTypePred : CPred<"$_self.isa<MyCast_IntTypeType>()">;
-def MyCast_LongLongTypePred : CPred<"$_self.isa<MyCast_LongLongTypeType>()">;
-def MyCast_LongTypePred : CPred<"$_self.isa<MyCast_LongTypeType>()">;
-def MyCast_FloatTypePred : CPred<"$_self.isa<MyCast_FloatTypeType>()">;
-def MyCast_DoubleTypePred : CPred<"$_self.isa<MyCast_DoubleTypeType>()">;
-def MyCast_EnumTypePred : CPred<"$_self.isa<MyCast_EnumTypeType>()">;
-def MyCast_StructTypePred : CPred<"$_self.isa<MyCast_StructTypeType>()">;
-def MyCast_UnionTypePred : CPred<"$_self.isa<MyCast_UnionTypeType>()">;
-def MyCast_AliasTypePred : CPred<"$_self.isa<MyCast_AliasTypeType>()">;
+def MyCast_VoidTypePred : CPred<"mlir::isa<MyCast_VoidTypeType>($_self)">;
+def MyCast_UnsignedLongLongTypePred : CPred<"mlir::isa<MyCast_UnsignedLongLongTypeType>($_self)">;
+def MyCast_UnsignedLongTypePred : CPred<"mlir::isa<MyCast_UnsignedLongTypeType>($_self)">;
+def MyCast_UnsignedShortTypePred : CPred<"mlir::isa<MyCast_UnsignedShortTypeType>($_self)">;
+def MyCast_UnsignedCharTypePred : CPred<"mlir::isa<MyCast_UnsignedCharTypeType>($_self)">;
+def MyCast_UnsignedIntTypePred : CPred<"mlir::isa<MyCast_UnsignedIntTypeType>($_self)">;
+def MyCast_CharTypePred : CPred<"mlir::isa<MyCast_CharTypeType>($_self)">;
+def MyCast_ShortTypePred : CPred<"mlir::isa<MyCast_ShortTypeType>($_self)">;
+def MyCast_IntTypePred : CPred<"mlir::isa<MyCast_IntTypeType>($_self)">;
+def MyCast_LongLongTypePred : CPred<"mlir::isa<MyCast_LongLongTypeType>($_self)">;
+def MyCast_LongTypePred : CPred<"mlir::isa<MyCast_LongTypeType>($_self)">;
+def MyCast_FloatTypePred : CPred<"mlir::isa<MyCast_FloatTypeType>($_self)">;
+def MyCast_DoubleTypePred : CPred<"mlir::isa<MyCast_DoubleTypeType>($_self)">;
+def MyCast_EnumTypePred : CPred<"mlir::isa<MyCast_EnumTypeType>($_self)">;
+def MyCast_StructTypePred : CPred<"mlir::isa<MyCast_StructTypeType>($_self)">;
+def MyCast_UnionTypePred : CPred<"mlir::isa<MyCast_UnionTypeType>($_self)">;
+def MyCast_AliasTypePred : CPred<"mlir::isa<MyCast_AliasTypeType>($_self)">;
 def MyCast_BaseTypePred : Or<[
-  CPred<"$_self.isa<MyCast_BaseTypeType>()">,
+  CPred<"mlir::isa<MyCast_BaseTypeType>($_self)">,
   MyCast_VoidTypePred,
   MyCast_UnsignedLongLongTypePred,
   MyCast_UnsignedLongTypePred,
@@ -257,24 +257,24 @@ def MyCast_BaseTypePred : Or<[
 ]>;
 
 def MyCast_TypePred : Or<[
-  CPred<"$_self.isa<MyCast_TypeType>()">,
+  CPred<"mlir::isa<MyCast_TypeType>($_self)">,
   MyCast_BaseTypePred
 ]>;
 
-def MyCast_EqOpPred : CPred<"$_self.isa<MyCast_EqOpType>()">;
-def MyCast_StarEqOpPred : CPred<"$_self.isa<MyCast_StarEqOpType>()">;
-def MyCast_DivEqOpPred : CPred<"$_self.isa<MyCast_DivEqOpType>()">;
-def MyCast_ModuloEqOpPred : CPred<"$_self.isa<MyCast_ModuloEqOpType>()">;
-def MyCast_PlusEqOpPred : CPred<"$_self.isa<MyCast_PlusEqOpType>()">;
-def MyCast_MinusEqOpPred : CPred<"$_self.isa<MyCast_MinusEqOpType>()">;
-def MyCast_LeftShiftEqOpPred : CPred<"$_self.isa<MyCast_LeftShiftEqOpType>()">;
-def MyCast_RightShiftEqOpPred : CPred<"$_self.isa<MyCast_RightShiftEqOpType>()">;
-def MyCast_AndEqOpPred : CPred<"$_self.isa<MyCast_AndEqOpType>()">;
-def MyCast_XorEqOpPred : CPred<"$_self.isa<MyCast_XorEqOpType>()">;
-def MyCast_OrEqOpPred : CPred<"$_self.isa<MyCast_OrEqOpType>()">;
+def MyCast_EqOpPred : CPred<"mlir::isa<MyCast_EqOpType>($_self)">;
+def MyCast_StarEqOpPred : CPred<"mlir::isa<MyCast_StarEqOpType>($_self)">;
+def MyCast_DivEqOpPred : CPred<"mlir::isa<MyCast_DivEqOpType>($_self)">;
+def MyCast_ModuloEqOpPred : CPred<"mlir::isa<MyCast_ModuloEqOpType>($_self)">;
+def MyCast_PlusEqOpPred : CPred<"mlir::isa<MyCast_PlusEqOpType>($_self)">;
+def MyCast_MinusEqOpPred : CPred<"mlir::isa<MyCast_MinusEqOpType>($_self)">;
+def MyCast_LeftShiftEqOpPred : CPred<"mlir::isa<MyCast_LeftShiftEqOpType>($_self)">;
+def MyCast_RightShiftEqOpPred : CPred<"mlir::isa<MyCast_RightShiftEqOpType>($_self)">;
+def MyCast_AndEqOpPred : CPred<"mlir::isa<MyCast_AndEqOpType>($_self)">;
+def MyCast_XorEqOpPred : CPred<"mlir::isa<MyCast_XorEqOpType>($_self)">;
+def MyCast_OrEqOpPred : CPred<"mlir::isa<MyCast_OrEqOpType>($_self)">;
 
 def MyCast_AssignOperatorPred : Or<[
-  CPred<"$_self.isa<MyCast_AssignOperatorType>()">,
+  CPred<"mlir::isa<MyCast_AssignOperatorType>($_self)">,
   MyCast_EqOpPred,
   MyCast_StarEqOpPred,
   MyCast_DivEqOpPred,
@@ -290,54 +290,54 @@ def MyCast_AssignOperatorPred : Or<[
 
 
 
-def MyCast_EqualOperatorPred : CPred<"$_self.isa<MyCast_EqualOperatorType>()">;
-def MyCast_NotEqualOperatorPred : CPred<"$_self.isa<MyCast_NotEqualOperatorType>()">;
-def MyCast_GeOperatorPred : CPred<"$_self.isa<MyCast_GeOperatorType>()">;
-def MyCast_GtOperatorPred : CPred<"$_self.isa<MyCast_GtOperatorType>()">;
-def MyCast_LeOperatorPred : CPred<"$_self.isa<MyCast_LeOperatorType>()">;
-def MyCast_LtOperatorPred : CPred<"$_self.isa<MyCast_LtOperatorType>()">;
-def MyCast_LshiftOperatorPred : CPred<"$_self.isa<MyCast_LshiftOperatorType>()">;
-def MyCast_RshiftOperatorPred : CPred<"$_self.isa<MyCast_RshiftOperatorType>()">;
-def MyCast_PlusOperatorPred : CPred<"$_self.isa<MyCast_PlusOperatorType>()">;
-def MyCast_MinusOperatorPred : CPred<"$_self.isa<MyCast_MinusOperatorType>()">;
-def MyCast_MultOperatorPred : CPred<"$_self.isa<MyCast_MultOperatorType>()">;
-def MyCast_DivOperatorPred : CPred<"$_self.isa<MyCast_DivOperatorType>()">;
-def MyCast_ModuloOperatorPred : CPred<"$_self.isa<MyCast_ModuloOperatorType>()">;
-def MyCast_UnopExpressionPred : CPred<"$_self.isa<MyCast_UnopExpressionType>()">;
-def MyCast_IncrOperatorPred : CPred<"$_self.isa<MyCast_IncrOperatorType>()">;
-def MyCast_DecrOperatorPred : CPred<"$_self.isa<MyCast_DecrOperatorType>()">;
-def MyCast_AddrofOperatorPred : CPred<"$_self.isa<MyCast_AddrofOperatorType>()">;
-def MyCast_DerefOperatorPred : CPred<"$_self.isa<MyCast_DerefOperatorType>()">;
-def MyCast_PositiveOperatorPred : CPred<"$_self.isa<MyCast_PositiveOperatorType>()">;
-def MyCast_NegativeOperatorPred : CPred<"$_self.isa<MyCast_NegativeOperatorType>()">;
-def MyCast_NotOperatorPred : CPred<"$_self.isa<MyCast_NotOperatorType>()">;
-def MyCast_LnotOperatorPred : CPred<"$_self.isa<MyCast_LnotOperatorType>()">;
-def MyCast_SizeofExpressionPred : CPred<"$_self.isa<MyCast_SizeofExpressionType>()">;
+def MyCast_EqualOperatorPred : CPred<"mlir::isa<MyCast_EqualOperatorType>($_self)">;
+def MyCast_NotEqualOperatorPred : CPred<"mlir::isa<MyCast_NotEqualOperatorType>($_self)">;
+def MyCast_GeOperatorPred : CPred<"mlir::isa<MyCast_GeOperatorType>($_self)">;
+def MyCast_GtOperatorPred : CPred<"mlir::isa<MyCast_GtOperatorType>($_self)">;
+def MyCast_LeOperatorPred : CPred<"mlir::isa<MyCast_LeOperatorType>($_self)">;
+def MyCast_LtOperatorPred : CPred<"mlir::isa<MyCast_LtOperatorType>($_self)">;
+def MyCast_LshiftOperatorPred : CPred<"mlir::isa<MyCast_LshiftOperatorType>($_self)">;
+def MyCast_RshiftOperatorPred : CPred<"mlir::isa<MyCast_RshiftOperatorType>($_self)">;
+def MyCast_PlusOperatorPred : CPred<"mlir::isa<MyCast_PlusOperatorType>($_self)">;
+def MyCast_MinusOperatorPred : CPred<"mlir::isa<MyCast_MinusOperatorType>($_self)">;
+def MyCast_MultOperatorPred : CPred<"mlir::isa<MyCast_MultOperatorType>($_self)">;
+def MyCast_DivOperatorPred : CPred<"mlir::isa<MyCast_DivOperatorType>($_self)">;
+def MyCast_ModuloOperatorPred : CPred<"mlir::isa<MyCast_ModuloOperatorType>($_self)">;
+def MyCast_UnopExpressionPred : CPred<"mlir::isa<MyCast_UnopExpressionType>($_self)">;
+def MyCast_IncrOperatorPred : CPred<"mlir::isa<MyCast_IncrOperatorType>($_self)">;
+def MyCast_DecrOperatorPred : CPred<"mlir::isa<MyCast_DecrOperatorType>($_self)">;
+def MyCast_AddrofOperatorPred : CPred<"mlir::isa<MyCast_AddrofOperatorType>($_self)">;
+def MyCast_DerefOperatorPred : CPred<"mlir::isa<MyCast_DerefOperatorType>($_self)">;
+def MyCast_PositiveOperatorPred : CPred<"mlir::isa<MyCast_PositiveOperatorType>($_self)">;
+def MyCast_NegativeOperatorPred : CPred<"mlir::isa<MyCast_NegativeOperatorType>($_self)">;
+def MyCast_NotOperatorPred : CPred<"mlir::isa<MyCast_NotOperatorType>($_self)">;
+def MyCast_LnotOperatorPred : CPred<"mlir::isa<MyCast_LnotOperatorType>($_self)">;
+def MyCast_SizeofExpressionPred : CPred<"mlir::isa<MyCast_SizeofExpressionType>($_self)">;
 
-def MyCast_ArrayExpressionPred : CPred<"$_self.isa<MyCast_ArrayExpressionType>()">;
-def MyCast_FunCallExpressionPred : CPred<"$_self.isa<MyCast_FunCallExpressionType>()">;
-def MyCast_FieldExpressionPred : CPred<"$_self.isa<MyCast_FieldExpressionType>()">;
-def MyCast_PtrFieldExpressionPred : CPred<"$_self.isa<MyCast_PtrFieldExpressionType>()">;
-def MyCast_PostincrExpressionPred : CPred<"$_self.isa<MyCast_PostincrExpressionType>()">;
-def MyCast_PostdecrExpressionPred : CPred<"$_self.isa<MyCast_PostdecrExpressionType>()">;
-def MyCast_VarExpressionPred : CPred<"$_self.isa<MyCast_VarExpressionType>()">;
-def MyCast_IntExpressionPred : CPred<"$_self.isa<MyCast_IntExpressionType>()">;
-def MyCast_FloatExpressionPred : CPred<"$_self.isa<MyCast_FloatExpressionType>()">;
-def MyCast_ParentExpressionPred : CPred<"$_self.isa<MyCast_ParentExpressionType>()">;
-def MyCast_StructureExpressionPred : CPred<"$_self.isa<MyCast_StructureExpressionType>()">;
-def MyCast_GenericExpressionPred : CPred<"$_self.isa<MyCast_GenericExpressionType>()">;
-def MyCast_TypeGenericItemPred : CPred<"$_self.isa<MyCast_TypeGenericItemType>()">;
-def MyCast_DefaultGenericItemPred : CPred<"$_self.isa<MyCast_DefaultGenericItemType>()">;
+def MyCast_ArrayExpressionPred : CPred<"mlir::isa<MyCast_ArrayExpressionType>($_self)">;
+def MyCast_FunCallExpressionPred : CPred<"mlir::isa<MyCast_FunCallExpressionType>($_self)">;
+def MyCast_FieldExpressionPred : CPred<"mlir::isa<MyCast_FieldExpressionType>($_self)">;
+def MyCast_PtrFieldExpressionPred : CPred<"mlir::isa<MyCast_PtrFieldExpressionType>($_self)">;
+def MyCast_PostincrExpressionPred : CPred<"mlir::isa<MyCast_PostincrExpressionType>($_self)">;
+def MyCast_PostdecrExpressionPred : CPred<"mlir::isa<MyCast_PostdecrExpressionType>($_self)">;
+def MyCast_VarExpressionPred : CPred<"mlir::isa<MyCast_VarExpressionType>($_self)">;
+def MyCast_IntExpressionPred : CPred<"mlir::isa<MyCast_IntExpressionType>($_self)">;
+def MyCast_FloatExpressionPred : CPred<"mlir::isa<MyCast_FloatExpressionType>($_self)">;
+def MyCast_ParentExpressionPred : CPred<"mlir::isa<MyCast_ParentExpressionType>($_self)">;
+def MyCast_StructureExpressionPred : CPred<"mlir::isa<MyCast_StructureExpressionType>($_self)">;
+def MyCast_GenericExpressionPred : CPred<"mlir::isa<MyCast_GenericExpressionType>($_self)">;
+def MyCast_TypeGenericItemPred : CPred<"mlir::isa<MyCast_TypeGenericItemType>($_self)">;
+def MyCast_DefaultGenericItemPred : CPred<"mlir::isa<MyCast_DefaultGenericItemType>($_self)">;
 
 
 def MyCast_GenericItemPred : Or<[
-  CPred<"$_self.isa<MyCast_GenericItemType>()">,
+  CPred<"mlir::isa<MyCast_GenericItemType>($_self)">,
   MyCast_TypeGenericItemPred,
   MyCast_DefaultGenericItemPred
 ]>;
 
 def MyCast_PrimaryExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_PrimaryExpressionType>()">,
+  CPred<"mlir::isa<MyCast_PrimaryExpressionType>($_self)">,
   MyCast_VarExpressionPred,
   MyCast_IntExpressionPred,
   MyCast_FloatExpressionPred,
@@ -348,12 +348,12 @@ def MyCast_PrimaryExpressionPred : Or<[
 
 
 def MyCast_PrimaryPostfixExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_PrimaryPostfixExpressionType>()">,
+  CPred<"mlir::isa<MyCast_PrimaryPostfixExpressionType>($_self)">,
   MyCast_PrimaryExpressionPred
 ]>;
 
 def MyCast_PostfixExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_PostfixExpressionType>()">,
+  CPred<"mlir::isa<MyCast_PostfixExpressionType>($_self)">,
   MyCast_PrimaryPostfixExpressionPred,
   MyCast_ArrayExpressionPred,
   MyCast_FunCallExpressionPred,
@@ -364,7 +364,7 @@ def MyCast_PostfixExpressionPred : Or<[
 ]>;
 
 def MyCast_UnaryOperatorPred : Or<[
-  CPred<"$_self.isa<MyCast_UnaryOperatorType>()">,
+  CPred<"mlir::isa<MyCast_UnaryOperatorType>($_self)">,
   MyCast_IncrOperatorPred,
   MyCast_DecrOperatorPred,
   MyCast_AddrofOperatorPred,
@@ -376,53 +376,53 @@ def MyCast_UnaryOperatorPred : Or<[
 ]>;
 
 def MyCast_UnaryExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_UnaryExpressionType>()">,
+  CPred<"mlir::isa<MyCast_UnaryExpressionType>($_self)">,
   MyCast_PostfixExpressionPred,
   MyCast_SizeofExpressionPred,
   MyCast_UnopExpressionPred
 ]>;
 
 def MyCast_CastExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_CastExpressionType>()">,
+  CPred<"mlir::isa<MyCast_CastExpressionType>($_self)">,
   MyCast_UnaryExpressionPred
 ]>;
 
 def MyCast_MultiplicativeOperatorPred : Or<[
-  CPred<"$_self.isa<MyCast_MultiplicativeOperatorType>()">,
+  CPred<"mlir::isa<MyCast_MultiplicativeOperatorType>($_self)">,
   MyCast_MultOperatorPred,
   MyCast_DivOperatorPred,
   MyCast_ModuloOperatorPred
 ]>;
 
 def MyCast_MultiplicativeExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_MultiplicativeExpressionType>()">,
+  CPred<"mlir::isa<MyCast_MultiplicativeExpressionType>($_self)">,
   MyCast_CastExpressionPred
 ]>;
 
 def MyCast_AdditiveOperatorPred : Or<[
-  CPred<"$_self.isa<MyCast_AdditiveOperatorType>()">,
+  CPred<"mlir::isa<MyCast_AdditiveOperatorType>($_self)">,
   MyCast_PlusOperatorPred,
   MyCast_MinusOperatorPred
 ]>;
 
 def MyCast_AdditiveExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_AdditiveExpressionType>()">,
+  CPred<"mlir::isa<MyCast_AdditiveExpressionType>($_self)">,
   MyCast_MultiplicativeExpressionPred
 ]>;
 
 def MyCast_ShiftOperatorPred : Or<[
-  CPred<"$_self.isa<MyCast_ShiftOperatorType>()">,
+  CPred<"mlir::isa<MyCast_ShiftOperatorType>($_self)">,
   MyCast_LshiftOperatorPred,
   MyCast_RshiftOperatorPred
 ]>;
 
 def MyCast_ShiftExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_ShiftExpressionType>()">,
+  CPred<"mlir::isa<MyCast_ShiftExpressionType>($_self)">,
   MyCast_AdditiveExpressionPred
 ]>;
 
 def MyCast_RelationalOperatorPred : Or<[
-  CPred<"$_self.isa<MyCast_RelationalOperatorType>()">,
+  CPred<"mlir::isa<MyCast_RelationalOperatorType>($_self)">,
   MyCast_GeOperatorPred,
   MyCast_GtOperatorPred,
   MyCast_LeOperatorPred,
@@ -430,65 +430,65 @@ def MyCast_RelationalOperatorPred : Or<[
 ]>;
 
 def MyCast_RelationalExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_RelationalExpressionType>()">,
+  CPred<"mlir::isa<MyCast_RelationalExpressionType>($_self)">,
   MyCast_ShiftExpressionPred
 ]>;
 
 
 def MyCast_EqualityOperatorPred : Or<[
-  CPred<"$_self.isa<MyCast_EqualityOperatorType>()">,
+  CPred<"mlir::isa<MyCast_EqualityOperatorType>($_self)">,
   MyCast_EqualOperatorPred,
   MyCast_NotEqualOperatorPred
 ]>;
 
 def MyCast_EqualityExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_EqualityExpressionType>()">,
+  CPred<"mlir::isa<MyCast_EqualityExpressionType>($_self)">,
   MyCast_RelationalExpressionPred
 ]>;
 
 def MyCast_AndExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_AndExpressionType>()">,
+  CPred<"mlir::isa<MyCast_AndExpressionType>($_self)">,
   MyCast_EqualityExpressionPred
 ]>;
 
 def MyCast_XorExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_XorExpressionType>()">,
+  CPred<"mlir::isa<MyCast_XorExpressionType>($_self)">,
   MyCast_AndExpressionPred
 ]>;
 
 def MyCast_OrExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_OrExpressionType>()">,
+  CPred<"mlir::isa<MyCast_OrExpressionType>($_self)">,
   MyCast_XorExpressionPred
 ]>;
 
 def MyCast_LogicalAndExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_LogicalAndExpressionType>()">,
+  CPred<"mlir::isa<MyCast_LogicalAndExpressionType>($_self)">,
   MyCast_OrExpressionPred
 ]>;
 
 def MyCast_LogicalOrExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_LogicalOrExpressionType>()">,
+  CPred<"mlir::isa<MyCast_LogicalOrExpressionType>($_self)">,
   MyCast_LogicalAndExpressionPred
 ]>;
 
 
 def MyCast_ConditionalExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_ConditionalExpressionType>()">,
+  CPred<"mlir::isa<MyCast_ConditionalExpressionType>($_self)">,
   MyCast_LogicalOrExpressionPred
 ]>;
 
 
 def MyCast_AssignmentExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_AssignmentExpressionType>()">,
+  CPred<"mlir::isa<MyCast_AssignmentExpressionType>($_self)">,
   MyCast_ConditionalExpressionPred
 ]>;
 def MyCast_ExpressionPred : Or<[
-  CPred<"$_self.isa<MyCast_ExpressionType>()">,
+  CPred<"mlir::isa<MyCast_ExpressionType>($_self)">,
   MyCast_AssignmentExpressionPred
 ]>;
 
 def MyCast_ProgramItemPred : Or<[
-  CPred<"$_self.isa<MyCast_ProgramItemType>()">,
+  CPred<"mlir::isa<MyCast_ProgramItemType>($_self)">,
   MyCast_FunDefPred,
   MyCast_VarDeclPred,
   MyCast_TypeDefPred

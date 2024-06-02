@@ -21,6 +21,8 @@
 #include "llvm/Support/ToolOutputFile.h"
 #include "Dialect/MyCast/MyCastDialect.h"
 #include "Dialect/MyCast/MyCastOpsDialect.cpp.inc"
+#include "Dialect/MyCcdfg/MyCcdfgDialect.h"
+#include "Dialect/MyCcdfg/MyCcdfgOpsDialect.cpp.inc"
 #include "Dialect/initAllDialect.h"
 
 int main(int argc, char **argv) {

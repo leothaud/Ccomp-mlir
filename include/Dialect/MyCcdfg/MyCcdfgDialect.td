@@ -1,4 +1,4 @@
-//===---------------------MyCastDialect.td---------------------------------===//
+//===--------------------------MyCcdfgDialect.td---------------------------===//
 //
 // Part of the Ccomp project.
 // Under the Apache License v2.0 with LLVM Exceptions.
@@ -7,33 +7,32 @@
 //
 //===------------- Copyright 2024 Dylan Leothaud --------------------------===//
 
-
-#ifndef MYCAST_DIALECT
-#define MYCAST_DIALECT
+#ifndef MYCCDFG_DIALECT
+#define MYCCDFG_DIALECT
 
 include "mlir/IR/OpBase.td"
 
 //===----------------------------------------------------------------------===//
-// MyCast dialect definition.
+// MyCcdfg dialect definition.
 //===----------------------------------------------------------------------===//
 
-def MyCast_Dialect : Dialect {
-    let name = "myCast";
-    let summary = "A dialect representing an ast of a language described in Ccomp/myc.bnf.";
+def MyCcdfg_Dialect : Dialect {
+    let name = "myCcdfg";
+    let summary = "A dialect representing an cdfg of a language described in Ccomp/myc.bnf.";
     let description = [{
-        This dialect represents the AST of the language described in Ccomp/myc.bnf.
+        This dialect represents the cdfg of the language described in Ccomp/myc.bnf.
         adapted from the C standard version 17, parsed by the antlr grammar in
         this project.
     }];
-    let cppNamespace = "::ccomp::myCast";
+    let cppNamespace = "::ccomp::myCcdfg";
     let useDefaultTypePrinterParser = 1;
 }
 
 //===----------------------------------------------------------------------===//
-// Base MyCast operation definition.
+// Base MyCcdfg operation definition.
 //===----------------------------------------------------------------------===//
 
-class MyCast_Op<string mnemonic, list<Trait> traits = []> :
-    Op<MyCast_Dialect, mnemonic, traits>;
+class MyCcdfg_Op<string mnemonic, list<Trait> traits = []> :
+    Op<MyCcdfg_Dialect, mnemonic, traits>;
 
-#endif // MYCAST_DIALECT
+#endif // MYCCDFG_DIALECT
