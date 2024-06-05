@@ -18,6 +18,12 @@
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/Bytecode/BytecodeOpInterface.h"
 
+
+#include "mlir/IR/RegionKindInterface.h"
+#include "mlir/IR/Types.h"
+#include "mlir/Support/TypeID.h"
+#include "llvm/ADT/TypeSwitch.h"
+
 #include "Dialect/MyCcdfg/MyCcdfgOpsTypes.h"
 
 #define GET_OP_CLASSES

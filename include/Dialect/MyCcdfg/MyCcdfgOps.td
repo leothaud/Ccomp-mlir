@@ -18,6 +18,9 @@ include "mlir/IR/BuiltinAttributes.td"
 include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/Bytecode/BytecodeOpInterface.td"
+include "mlir/IR/RegionKindInterface.td"
+include "mlir/IR/AttrTypeBase.td"
+include "mlir/IR/BuiltinLocationAttributes.td"
 
 def MyCcdfg_ProgramOp : MyCcdfg_Op<"program", [AttrSizedOperandSegments]> {
     let arguments = (ins Variadic<Type<MyCcdfg_TypeDefPred>>:$typeDefs,
@@ -66,13 +69,12 @@ def MyCcdfg_FunDeclOp : MyCcdfg_Op<"funDecl"> {
     }];
 }
 
-def MyCcdfg_FunDefOp : MyCcdfg_Op<"funDef"> {
+def MyCcdfg_FunDefOp : MyCcdfg_Op<"funDef", [RegionKindInterface, NoTerminator]> {
     let arguments = (ins Type<MyCcdfg_TypePred>:$returnType,
                          Builtin_StringAttr:$funName,
                          Type<MyCcdfg_ScopePred>:$parametersScope,
-                         Type<MyCcdfg_ScopePred>:$localsScope,
-                         Variadic<Type<MyCcdfg_BasicBlockPred>>:$blocks,
-                         Type<MyCcdfg_InputTransitionPred>:$inputTransition);
+                         Type<MyCcdfg_ScopePred>:$localsScope);
+    let regions = (region SizedRegion<1>:$blockRegion);
     let results = (outs MyCcdfg_FunDefType:$res);
     let assemblyFormat = [{
         `(`
@@ -80,10 +82,14 @@ def MyCcdfg_FunDefOp : MyCcdfg_Op<"funDef"> {
         `,` $funName
         `,` `(` $parametersScope `:` type($parametersScope) `)`
         `,` `(` $localsScope `:` type($localsScope) `)`
-        `,` (`(` $blocks^ `:` type($blocks) `)`)?
-        `,` `(` $inputTransition `:` type($inputTransition) `)`
-        `)` attr-dict
+        `)` $blockRegion attr-dict
     }];
+
+    code extraModuleClassDeclaration = [{
+        static mlir::RegionKind getRegionKind(unsigned index) { return mlir::RegionKind::Graph;}
+    }];
+
+    let extraClassDeclaration = extraModuleClassDeclaration # [{}];
 }
 
 def MyCcdfg_UnionDefOp : MyCcdfg_Op<"unionDef"> {
