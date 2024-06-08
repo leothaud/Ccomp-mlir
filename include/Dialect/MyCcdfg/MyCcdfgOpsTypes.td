@@ -70,7 +70,9 @@ def MyCcdfg_LshiftExpressionType : MyCcdfg_Type<"MyCcdfg_LshiftExpression", "lsh
 def MyCcdfg_RshiftExpressionType : MyCcdfg_Type<"MyCcdfg_RshiftExpression", "rshiftExpression">{}
 def MyCcdfg_AddExpressionType : MyCcdfg_Type<"MyCcdfg_AddExpression", "addExpression">{}
 def MyCcdfg_SubExpressionType : MyCcdfg_Type<"MyCcdfg_SubExpression", "subExpression">{}
+
 def MyCcdfg_CastExpressionType : MyCcdfg_Type<"MyCcdfg_CastExpression", "castExpression">{}
+
 def MyCcdfg_MultExpressionType : MyCcdfg_Type<"MyCcdfg_MultExpression", "multExpression">{}
 def MyCcdfg_DivExpressionType : MyCcdfg_Type<"MyCcdfg_DivExpression", "divExpression">{}
 def MyCcdfg_ModuloExpressionType : MyCcdfg_Type<"MyCcdfg_ModuloExpression", "moduloExpression">{}

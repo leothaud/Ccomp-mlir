@@ -27,3 +27,5 @@ void MyCastDialect::initialize() {
 #undef GET_OP_LIST
       >();
 }
+
+#include "Dialect/MyCast/MyCastInterface.cpp.inc"

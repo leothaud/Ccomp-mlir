@@ -4,6 +4,7 @@ set(LIBS
         ${dialect_libs}
         ${conversion_libs}
         MLIROptLib
+        MyCastTransforms
         MyCastDialect
         MyCcdfgDialect
         )

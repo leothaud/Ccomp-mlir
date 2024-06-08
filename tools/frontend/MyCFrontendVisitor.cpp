@@ -256,7 +256,7 @@ MyCFrontendVisitor::visitAliasDef(MyCParser::AliasDefContext *context) {
   result.types = "!myCast.aliasDef";
   result.program = typeRes.program + result.vars + " = myCast.aliasDef ((" +
                    typeRes.vars + " : " + typeRes.types + "),\"" +
-                   context->name->getText() + "\")";
+                   context->name->getText() + "\")\n";
 
   return result;
 }
@@ -329,10 +329,10 @@ std::any MyCFrontendVisitor::visitCompoundStatement(
   VisitRes stmtRes;
   for (auto *stmt : context->stmt)
     stmtRes += std::any_cast<VisitRes>(visitStatement(stmt));
-  stmtRes.vars = "%" + std::to_string(getNextVarIndex());
-  stmtRes.types = "!myCast.compoundStatement";
+  result.vars = "%" + std::to_string(getNextVarIndex());
+  result.types = "!myCast.compoundStatement";
   result.program =
-      stmtRes.program + stmtRes.vars + " = myCast.compoundStatement (";
+      stmtRes.program + result.vars + " = myCast.compoundStatement (";
   if (!context->stmt.empty())
     result.program += stmtRes.vars + " : " + stmtRes.types;
   result.program += ")\n";

@@ -85,11 +85,9 @@ def MyCcdfg_FunDefOp : MyCcdfg_Op<"funDef", [RegionKindInterface, NoTerminator]>
         `)` $blockRegion attr-dict
     }];
 
-    code extraModuleClassDeclaration = [{
+    let extraClassDeclaration = [{
         static mlir::RegionKind getRegionKind(unsigned index) { return mlir::RegionKind::Graph;}
     }];
-
-    let extraClassDeclaration = extraModuleClassDeclaration # [{}];
 }
 
 def MyCcdfg_UnionDefOp : MyCcdfg_Op<"unionDef"> {

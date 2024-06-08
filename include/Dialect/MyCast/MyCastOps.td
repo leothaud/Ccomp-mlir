@@ -22,12 +22,20 @@ include "mlir/Bytecode/BytecodeOpInterface.td"
 
 
 
-def MyCast_ProgramOp : MyCast_Op<"program"> {
+def MyCast_ProgramOp : MyCast_Op<"program", [IsolatedFromAbove]> {
     let arguments = (ins Variadic<Type<MyCast_ProgramItemPred>>:$items);
     let results = (outs MyCast_ProgramType:$res);
     let assemblyFormat = [{
         `(` ($items^ `:` type($items))? `)`
         attr-dict
+    }];
+
+
+    code prettyPrintBody = [{
+            for (auto elt: getItems()) {
+                llvm::cast<PrettyPrintOpInterface>(elt.getDefiningOp()).prettyPrint(out, indent);
+                out << "\n\n";
+            }
     }];
 }
 
@@ -40,6 +48,16 @@ def MyCast_FunDefOp : MyCast_Op<"funDef"> {
         `,` (`(` $body^ `:` type($body)`)`)? `)` 
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        llvm::cast<PrettyPrintOpInterface>(getProto().getDefiningOp()).prettyPrint(out, indent);
+            if (getBody()) {
+            out << "\n";
+            llvm::cast<PrettyPrintOpInterface>(getBody().getDefiningOp()).prettyPrint(out, 0);
+        } else {
+            out << ";\n";
+        }
+    }];
 }
 
 def MyCast_FunProtoOp : MyCast_Op<"funProto"> {
@@ -50,6 +68,20 @@ def MyCast_FunProtoOp : MyCast_Op<"funProto"> {
     let assemblyFormat = [{
         `(` `(`$returnType `:` type($returnType) `)` `,` $name `,` (`(`$args^ `:` type($args)`)`)? `)`
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getReturnType().getDefiningOp()).prettyPrint(out, 0);
+        out << " " << getName().getValue().data() << " (";
+        bool first = true;
+        for (auto arg: getArgs()) {
+            if (!first) out << ", ";
+            first = false;
+            llvm::cast<PrettyPrintOpInterface>(arg.getDefiningOp()).prettyPrint(out, 0);
+        }
+        out << ")";
     }];
 }
 
@@ -62,6 +94,18 @@ def MyCast_ArgumentOp : MyCast_Op<"argument"> {
         `(` `(`$argType `:` type($argType) `)` `,` $name `,` (`(` $sizes^ `:`type($sizes) `)`)? `)` 
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getArgType().getDefiningOp()).prettyPrint(out, 0);
+        out << " " << getName().getValue().data();
+        for (auto size: getSizes()) {
+            out << "[";
+            llvm::cast<PrettyPrintOpInterface>(size.getDefiningOp()).prettyPrint(out, 0);
+            out << "]";
+        }
+    }];
 }
 
 def MyCast_VarDeclOp : MyCast_Op<"varDecl"> {
@@ -69,8 +113,21 @@ def MyCast_VarDeclOp : MyCast_Op<"varDecl"> {
                          Variadic<Type<MyCast_BaseVarDeclPred>>:$decls);
     let results = (outs MyCast_VarDeclType:$res);
     let assemblyFormat = [{
-        `(` `(`$argType type($argType) `)` `,` ( `(` $decls^ `:` type($decls) `)`)? `)` 
+        `(` `(`$argType `:` type($argType) `)` `,` ( `(` $decls^ `:` type($decls) `)`)? `)` 
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getArgType().getDefiningOp()).prettyPrint(out, 0);
+        bool first = true;
+        for (auto decl: getDecls()) {
+            out << (first ? " " : ", ");
+            first = false;
+            llvm::cast<PrettyPrintOpInterface>(decl.getDefiningOp()).prettyPrint(out, 0);
+        }
+        out << ";";
     }];
 }
 
@@ -83,6 +140,22 @@ def MyCast_BaseVarDeclOp : MyCast_Op<"baseVarDecl", [AttrSizedOperandSegments]> 
         `(` $name `,` (`(` $sizes^ `:` type($sizes)`)` )? `,` (`(` $value^ `:` type($value)`)`)? `)` 
         attr-dict
     }];
+
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << getName().getValue().data();
+        for (auto size: getSizes()) {
+            out << "[";
+            llvm::cast<PrettyPrintOpInterface>(size.getDefiningOp()).prettyPrint(out, 0);
+            out << "]";
+        }
+        if (getValue()) {
+            out << " = ";
+            llvm::cast<PrettyPrintOpInterface>(getValue().getDefiningOp()).prettyPrint(out, 0);
+        }
+    }];
 }
 
 def MyCast_UnionDefOp : MyCast_Op<"unionDef"> {
@@ -92,6 +165,17 @@ def MyCast_UnionDefOp : MyCast_Op<"unionDef"> {
     let assemblyFormat = [{
         `(` $name `,` (`(`$decls^ `:` type($decls) `)`)? `)` 
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "union " << getName().getValue().data() << " {\n";
+        for (auto decl: getDecls()) {
+            llvm::cast<PrettyPrintOpInterface>(decl.getDefiningOp()).prettyPrint(out, indent+1);
+            out << "\n";
+        }
+        out << "}";
     }];
 }
 
@@ -103,6 +187,17 @@ def MyCast_StructDefOp : MyCast_Op<"structDef"> {
         `(` $name `,` (`(`$decls^ `:` type($decls) `)`)? `)` 
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "struct " << getName().getValue().data() << " {\n";
+        for (auto decl: getDecls()) {
+            llvm::cast<PrettyPrintOpInterface>(decl.getDefiningOp()).prettyPrint(out, indent+1);
+            out << "\n";
+        }
+        out << "}";
+    }];
 }
 
 def MyCast_EnumDefOp : MyCast_Op<"enumDef"> {
@@ -112,6 +207,38 @@ def MyCast_EnumDefOp : MyCast_Op<"enumDef"> {
     let assemblyFormat = [{
         `(` $name `,` (`(`$items^ `:` type($items) `)`)? `)`
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "enum " << getName().getValue().data() << " {\n";
+        for (auto item: getItems()) {
+            llvm::cast<PrettyPrintOpInterface>(item.getDefiningOp()).prettyPrint(out, indent+1);
+            out << "\n";
+        }
+        out << "}";
+    }];
+
+}
+
+def MyCast_AliasDefOp : MyCast_Op<"aliasDef"> {
+    let arguments = (ins Type<MyCast_TypePred>:$baseType,
+                         Builtin_StringAttr:$name);
+    let results = (outs MyCast_AliasDefType:$res);
+    let assemblyFormat = [{
+        `(`
+        `(` $baseType `:` type($baseType) `)`
+        `,` $name
+        `)` attr-dict
+    }];
+    
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "typedef ";
+        llvm::cast<PrettyPrintOpInterface>(getBaseType().getDefiningOp()).prettyPrint(out, 0);
+        out << " " << getName().getValue().data() << ";";
     }];
 }
 
@@ -123,6 +250,11 @@ def MyCast_LabeledStatementOp : MyCast_Op<"labeledStatement"> {
         `(` $label `,` `(` $stmt `:` type($stmt) `)` `)` 
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        out << getLabel().getValue().data() << ":";
+        llvm::cast<PrettyPrintOpInterface>(getStmt().getDefiningOp()).prettyPrint(out, indent);
+    }];
 }
 
 def MyCast_CompoundStatementOp : MyCast_Op<"compoundStatement"> {
@@ -131,6 +263,19 @@ def MyCast_CompoundStatementOp : MyCast_Op<"compoundStatement"> {
     let assemblyFormat = [{
         `(` ($stmt^ `:` type($stmt))? `)`
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "{\n";
+        for (auto stmt: getStmt()) {
+            llvm::cast<PrettyPrintOpInterface>(stmt.getDefiningOp()).prettyPrint(out, indent + 1);
+            out << "\n";
+        }
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "}\n";
     }];
 }
 
@@ -141,6 +286,10 @@ def MyCast_VarDeclStatementOp : MyCast_Op<"varDeclStatement"> {
         `(` $decl `:` type($decl) `)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        llvm::cast<PrettyPrintOpInterface>(getDecl().getDefiningOp()).prettyPrint(out, indent);
+    }];
 }
 
 def MyCast_ExpressionStatementOp : MyCast_Op<"expressionStatement"> {
@@ -149,6 +298,12 @@ def MyCast_ExpressionStatementOp : MyCast_Op<"expressionStatement"> {
     let assemblyFormat = [{
         `(` ($value^ `:` type($value))? `)`
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        if (getValue())
+            llvm::cast<PrettyPrintOpInterface>(getValue().getDefiningOp()).prettyPrint(out, indent);
+        out << ";\n";
     }];
 }
 
@@ -163,6 +318,22 @@ def MyCast_IfStatementOp : MyCast_Op<"ifStatement"> {
         `,` (`(` $elsePart^ `:` type($elsePart) `)`)? `)` 
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "if (";
+        llvm::cast<PrettyPrintOpInterface>(getCond().getDefiningOp()).prettyPrint(out, 0);
+        out << ")\n";
+        llvm::cast<PrettyPrintOpInterface>(getThenPart().getDefiningOp()).prettyPrint(out, indent+1);
+        if (getElsePart()) {
+            out << "\n";
+            for (int i = 0; i < indent; ++i)
+                out << "  ";
+            out <<"else\n";
+            llvm::cast<PrettyPrintOpInterface>(getElsePart().getDefiningOp()).prettyPrint(out, indent+1);
+        }
+    }];
 }
 
 def MyCast_SwitchStatementOp : MyCast_Op<"switchStatement"> {
@@ -174,6 +345,24 @@ def MyCast_SwitchStatementOp : MyCast_Op<"switchStatement"> {
         `,` (`(`$items^ `:` type($items)`)`)? `)` 
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "switch (";
+        llvm::cast<PrettyPrintOpInterface>(getCond().getDefiningOp()).prettyPrint(out, 0);
+        out << ")\n";
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "{";
+        for (auto item: getItems()) {
+            llvm::cast<PrettyPrintOpInterface>(item.getDefiningOp()).prettyPrint(out, indent+1);
+            out << "\n";
+        }
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "}";
+    }];
 }
 
 def MyCast_SwitchCaseItemOp : MyCast_Op<"switchCaseItem"> {
@@ -184,6 +373,16 @@ def MyCast_SwitchCaseItemOp : MyCast_Op<"switchCaseItem"> {
         `(` `(` $cond `:` type($cond) `)` `,` `(` $body `:` type($body) `)` `)` 
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "case ";
+        llvm::cast<PrettyPrintOpInterface>(getCond().getDefiningOp()).prettyPrint(out, 0);
+        out << ":\n";
+        llvm::cast<PrettyPrintOpInterface>(getBody().getDefiningOp()).prettyPrint(out, indent+1);
+        out << "\n";
+    }];
 }
 
 def MyCast_SwitchDefaultItemOp : MyCast_Op<"switchDefaultItem"> {
@@ -192,6 +391,14 @@ def MyCast_SwitchDefaultItemOp : MyCast_Op<"switchDefaultItem"> {
     let assemblyFormat = [{
         `(` $body `:` type($body) `)`
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "default:\n";
+        llvm::cast<PrettyPrintOpInterface>(getBody().getDefiningOp()).prettyPrint(out, indent+1);
+        out << "\n";
     }];
 }
 
@@ -203,6 +410,15 @@ def MyCast_WhileStatementOp : MyCast_Op<"whileStatement"> {
         `(` `(` $cond `:` type($cond) `)` `,` `(` $body `:` type($body) `)` `)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "while (";
+        llvm::cast<PrettyPrintOpInterface>(getCond().getDefiningOp()).prettyPrint(out, 0);
+        out << ")\n";
+        llvm::cast<PrettyPrintOpInterface>(getBody().getDefiningOp()).prettyPrint(out, indent+1);
+    }];
 }
 
 def MyCast_DoWhileStatementOp : MyCast_Op<"doWhileStatement"> {
@@ -212,6 +428,18 @@ def MyCast_DoWhileStatementOp : MyCast_Op<"doWhileStatement"> {
     let assemblyFormat = [{
         `(` $cond `:` type($cond) `)` `,` `(` $body `:` type($body) `)` `)` 
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "do\n";
+        llvm::cast<PrettyPrintOpInterface>(getBody().getDefiningOp()).prettyPrint(out, indent+1);
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "while (";
+        llvm::cast<PrettyPrintOpInterface>(getCond().getDefiningOp()).prettyPrint(out, 0);
+        out << ");\n";
     }];
 }
 
@@ -228,13 +456,36 @@ def MyCast_ForStatementOp : MyCast_Op<"forStatement", [AttrSizedOperandSegments]
         `,` `(` $body `:` type($body) `)` `)` 
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "for (";
+        if (getInit())
+            llvm::cast<PrettyPrintOpInterface>(getInit().getDefiningOp()).prettyPrint(out, 0);
+        else
+            out << "; ";
+        if (getCond())
+            llvm::cast<PrettyPrintOpInterface>(getCond().getDefiningOp()).prettyPrint(out, 0);
+        out << "; ";
+        if (getStep())
+            llvm::cast<PrettyPrintOpInterface>(getStep().getDefiningOp()).prettyPrint(out, 0);
+        out << ")\n";
+        llvm::cast<PrettyPrintOpInterface>(getBody().getDefiningOp()).prettyPrint(out, indent+1);
+    }];
 }
 
 def MyCast_GotoStatementOp : MyCast_Op<"gotoStatement"> {
-    let arguments = (ins );
+    let arguments = (ins Builtin_StringAttr:$label);
     let results = (outs MyCast_GotoStatementType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "goto " << getLabel().getValue().data() << ";";
     }];
 }
 
@@ -244,6 +495,12 @@ def MyCast_ContinueStatementOp : MyCast_Op<"continueStatement"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "continue;";
+    }];
 }
 
 def MyCast_BreakStatementOp : MyCast_Op<"breakStatement"> {
@@ -251,6 +508,12 @@ def MyCast_BreakStatementOp : MyCast_Op<"breakStatement"> {
     let results = (outs MyCast_BreakStatementType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "break;";
     }];
 }
 
@@ -261,6 +524,17 @@ def MyCast_ReturnStatementOp : MyCast_Op<"returnStatement"> {
         `(` $value `:` type($value) `)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "return";
+        if (getValue()) {
+            out << " ";
+            llvm::cast<PrettyPrintOpInterface>(getValue().getDefiningOp()).prettyPrint(out, 0);
+        }
+        out << ";";
+    }];
 }
 
 def MyCast_TypeOp : MyCast_Op<"type"> {
@@ -269,10 +543,20 @@ def MyCast_TypeOp : MyCast_Op<"type"> {
                          Builtin_IntegerAttr:$stars);
     let results = (outs MyCast_TypeType:$res);
     let assemblyFormat = [{
-        `(` `(` $modifiers `:` type($modifiers) `)`
+        `(` (`(` $modifiers^ `:` type($modifiers) `)`)?
         `,` `(` $bt `:` type($bt) `)`
         `,` $stars `)` 
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        for (auto modifier: getModifiers())
+            llvm::cast<PrettyPrintOpInterface>(modifier.getDefiningOp()).prettyPrint(out, 0);
+        llvm::cast<PrettyPrintOpInterface>(getBt().getDefiningOp()).prettyPrint(out, 0);
+        for (uint64_t i = 0; i < *getStars().getValue().getRawData(); ++i)
+            out << "*";
     }];
 }
 
@@ -282,6 +566,12 @@ def MyCast_StaticTypeModifierOp : MyCast_Op<"staticTypeModifier"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "static";
+    }];
 }
 
 def MyCast_ConstTypeModifierOp : MyCast_Op<"constTypeModifier"> {
@@ -289,6 +579,12 @@ def MyCast_ConstTypeModifierOp : MyCast_Op<"constTypeModifier"> {
     let results = (outs MyCast_ConstTypeModifierType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "const";
     }];
 }
 
@@ -298,6 +594,12 @@ def MyCast_ExternTypeModifierOp : MyCast_Op<"externTypeModifier"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "extern";
+    }];
 }
 
 def MyCast_VolatileTypeModifierOp : MyCast_Op<"volatileTypeModifier"> {
@@ -305,6 +607,12 @@ def MyCast_VolatileTypeModifierOp : MyCast_Op<"volatileTypeModifier"> {
     let results = (outs MyCast_VolatileTypeModifierType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "volatile";
     }];
 }
 
@@ -314,6 +622,12 @@ def MyCast_VoidTypeOp : MyCast_Op<"voidType"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "void";
+    }];
 }
 
 def MyCast_UnsignedLongLongTypeOp : MyCast_Op<"unsignedLongLongType"> {
@@ -321,6 +635,12 @@ def MyCast_UnsignedLongLongTypeOp : MyCast_Op<"unsignedLongLongType"> {
     let results = (outs MyCast_UnsignedLongLongTypeType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "unsigned long long";
     }];
 }
 
@@ -330,6 +650,12 @@ def MyCast_UnsignedLongTypeOp : MyCast_Op<"unsignedLongType"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "unsigned long";
+    }];
 }
 
 def MyCast_UnsignedShortTypeOp : MyCast_Op<"UnsignedShortType"> {
@@ -337,6 +663,12 @@ def MyCast_UnsignedShortTypeOp : MyCast_Op<"UnsignedShortType"> {
     let results = (outs MyCast_UnsignedShortTypeType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "unsigned short";
     }];
 }
 
@@ -346,6 +678,12 @@ def MyCast_UnsignedCharTypeOp : MyCast_Op<"UnsignedCharType"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "unsigned char";
+    }];
 }
 
 def MyCast_UnsignedIntTypeOp : MyCast_Op<"UnsignedIntType"> {
@@ -353,6 +691,12 @@ def MyCast_UnsignedIntTypeOp : MyCast_Op<"UnsignedIntType"> {
     let results = (outs MyCast_UnsignedIntTypeType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "unsigned int";
     }];
 }
 
@@ -363,6 +707,12 @@ def MyCast_LongLongTypeOp : MyCast_Op<"longLongType"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "long long";
+    }];
 }
 
 def MyCast_LongTypeOp : MyCast_Op<"longType"> {
@@ -370,6 +720,12 @@ def MyCast_LongTypeOp : MyCast_Op<"longType"> {
     let results = (outs MyCast_LongTypeType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "long";
     }];
 }
 
@@ -379,6 +735,12 @@ def MyCast_ShortTypeOp : MyCast_Op<"shortType"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "short";
+    }];
 }
 
 def MyCast_CharTypeOp : MyCast_Op<"charType"> {
@@ -386,6 +748,12 @@ def MyCast_CharTypeOp : MyCast_Op<"charType"> {
     let results = (outs MyCast_CharTypeType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "char";
     }];
 }
 
@@ -395,6 +763,12 @@ def MyCast_IntTypeOp : MyCast_Op<"intType"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "int";
+    }];
 }
 
 def MyCast_FloatTypeOp : MyCast_Op<"floatType"> {
@@ -402,6 +776,12 @@ def MyCast_FloatTypeOp : MyCast_Op<"floatType"> {
     let results = (outs MyCast_FloatTypeType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "float";
     }];
 }
 
@@ -411,37 +791,67 @@ def MyCast_DoubleTypeOp : MyCast_Op<"doubleType"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "double";
+    }];
 }
 
-def MyCast_EnumypeOp : MyCast_Op<"enumType"> {
-    let arguments = (ins );
+def MyCast_EnumTypeOp : MyCast_Op<"enumType"> {
+    let arguments = (ins Builtin_StringAttr:$name);
     let results = (outs MyCast_EnumTypeType:$res);
     let assemblyFormat = [{
-        attr-dict
+        `(` $name `)` attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "enum " << getName().getValue().data();
     }];
 }
 
 def MyCast_StructTypeOp : MyCast_Op<"structType"> {
-    let arguments = (ins );
+    let arguments = (ins Builtin_StringAttr:$name);
     let results = (outs MyCast_StructTypeType:$res);
     let assemblyFormat = [{
-        attr-dict
+        `(` $name `)` attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "struct " << getName().getValue().data();
     }];
 }
 
 def MyCast_UnionTypeOp : MyCast_Op<"unionType"> {
-    let arguments = (ins );
+    let arguments = (ins Builtin_StringAttr:$name);
     let results = (outs MyCast_UnionTypeType:$res);
     let assemblyFormat = [{
-        attr-dict
+        `(` $name `)` attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "union " << getName().getValue().data();
     }];
 }
 
 def MyCast_AliasTypeOp : MyCast_Op<"aliasType"> {
-    let arguments = (ins );
+    let arguments = (ins Builtin_StringAttr:$name);
     let results = (outs MyCast_AliasTypeType:$res);
     let assemblyFormat = [{
-        attr-dict
+        `(` $name `)` attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << getName().getValue().data();
     }];
 }
 
@@ -456,6 +866,16 @@ def MyCast_AssignmentExpressionOp : MyCast_Op<"assignmentExpression"> {
         `,` `(` $rvalue `:` type($rvalue) `)` `)` 
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getLvalue().getDefiningOp()).prettyPrint(out, 0);
+        out << " ";
+        llvm::cast<PrettyPrintOpInterface>(getOp().getDefiningOp()).prettyPrint(out, 0);
+        out << " ";
+        llvm::cast<PrettyPrintOpInterface>(getRvalue().getDefiningOp()).prettyPrint(out, 0);
+    }];
 }
 
 def MyCast_EqOpOp : MyCast_Op<"eqOp"> {
@@ -463,6 +883,12 @@ def MyCast_EqOpOp : MyCast_Op<"eqOp"> {
     let results = (outs MyCast_EqOpType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "=";
     }];
 }
 
@@ -472,6 +898,12 @@ def MyCast_StarEqOpOp : MyCast_Op<"starEqOp"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "*=";
+    }];
 }
 
 def MyCast_DivEqOpOp : MyCast_Op<"divEqOp"> {
@@ -479,6 +911,12 @@ def MyCast_DivEqOpOp : MyCast_Op<"divEqOp"> {
     let results = (outs MyCast_DivEqOpType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "/=";
     }];
 }
 
@@ -488,6 +926,12 @@ def MyCast_ModuloEqOpOp : MyCast_Op<"moduloEqOp"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "%=";
+    }];
 }
 
 def MyCast_PlusEqOpOp : MyCast_Op<"plusEqOp"> {
@@ -495,6 +939,12 @@ def MyCast_PlusEqOpOp : MyCast_Op<"plusEqOp"> {
     let results = (outs MyCast_PlusEqOpType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "+=";
     }];
 }
 
@@ -504,6 +954,12 @@ def MyCast_MinusEqOpOp : MyCast_Op<"minusEqOp"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "-=";
+    }];
 }
 
 def MyCast_LeftShiftEqOpOp : MyCast_Op<"leftShiftEqOp"> {
@@ -511,6 +967,12 @@ def MyCast_LeftShiftEqOpOp : MyCast_Op<"leftShiftEqOp"> {
     let results = (outs MyCast_LeftShiftEqOpType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "<<=";
     }];
 }
 
@@ -520,6 +982,12 @@ def MyCast_RightShiftEqOpOp : MyCast_Op<"rightShiftEqOp"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << ">>=";
+    }];
 }
 
 def MyCast_AndEqOpOp : MyCast_Op<"andEqOp"> {
@@ -527,6 +995,12 @@ def MyCast_AndEqOpOp : MyCast_Op<"andEqOp"> {
     let results = (outs MyCast_AndEqOpType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "&=";
     }];
 }
 
@@ -536,6 +1010,12 @@ def MyCast_XorEqOpOp : MyCast_Op<"xorEqOp"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "^=";
+    }];
 }
 
 def MyCast_OrEqOpOp : MyCast_Op<"orEqOp"> {
@@ -543,6 +1023,12 @@ def MyCast_OrEqOpOp : MyCast_Op<"orEqOp"> {
     let results = (outs MyCast_OrEqOpType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "|=";
     }];
 }
 
@@ -557,6 +1043,16 @@ def MyCast_ConditionalExpressionOp : MyCast_Op<"conditionalExpression"> {
         `,` `(`$elsePart `:` type($elsePart)`)``)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getCond().getDefiningOp()).prettyPrint(out, 0);
+        out << " ? ";
+        llvm::cast<PrettyPrintOpInterface>(getThenPart().getDefiningOp()).prettyPrint(out, 0);
+        out << " : ";
+        llvm::cast<PrettyPrintOpInterface>(getElsePart().getDefiningOp()).prettyPrint(out, 0);
+    }];
 }
 
 def MyCast_LogicalOrExpressionOp : MyCast_Op<"logicalOrExpression"> {
@@ -565,6 +1061,17 @@ def MyCast_LogicalOrExpressionOp : MyCast_Op<"logicalOrExpression"> {
     let assemblyFormat = [{
         `(` $expr `:` type($expr) `)`
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        bool first = true;
+        for (auto expr: getExpr()) {
+            if (!first) out << " || ";
+            first = false;
+            llvm::cast<PrettyPrintOpInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
+        }
     }];
 }
 
@@ -575,6 +1082,17 @@ def MyCast_LogicalAndExpressionOp : MyCast_Op<"logicalAndExpression"> {
         `(` $expr `:` type($expr) `)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        bool first = true;
+        for (auto expr: getExpr()) {
+            if (!first) out << " && ";
+            first = false;
+            llvm::cast<PrettyPrintOpInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
+        }
+    }];
 }
 
 def MyCast_OrExpressionOp : MyCast_Op<"orExpression"> {
@@ -583,6 +1101,17 @@ def MyCast_OrExpressionOp : MyCast_Op<"orExpression"> {
     let assemblyFormat = [{
         `(` $expr `:` type($expr) `)`
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        bool first = true;
+        for (auto expr: getExpr()) {
+            if (!first) out << " | ";
+            first = false;
+            llvm::cast<PrettyPrintOpInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
+        }
     }];
 }
 
@@ -593,6 +1122,17 @@ def MyCast_XorExpressionOp : MyCast_Op<"xorExpression"> {
         `(` $expr `:` type($expr) `)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        bool first = true;
+        for (auto expr: getExpr()) {
+            if (!first) out << " ^ ";
+            first = false;
+            llvm::cast<PrettyPrintOpInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
+        }
+    }];
 }
 
 def MyCast_AndExpressionOp : MyCast_Op<"andExpression"> {
@@ -601,6 +1141,17 @@ def MyCast_AndExpressionOp : MyCast_Op<"andExpression"> {
     let assemblyFormat = [{
         `(` $expr `:` type($expr) `)`
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        bool first = true;
+        for (auto expr: getExpr()) {
+            if (!first) out << " & ";
+            first = false;
+            llvm::cast<PrettyPrintOpInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
+        }
     }];
 }
 
@@ -615,6 +1166,16 @@ def MyCast_EqualityExpressionOp : MyCast_Op<"equalityExpression"> {
         `,` $rval  `:` type($rval)`)``)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getLval().getDefiningOp()).prettyPrint(out, 0);
+        out << " ";
+        llvm::cast<PrettyPrintOpInterface>(getOp().getDefiningOp()).prettyPrint(out, 0);
+        out << " ";
+        llvm::cast<PrettyPrintOpInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
+    }];
 }
 
 def MyCast_EqualOperatorOp : MyCast_Op<"equalOperator"> {
@@ -623,6 +1184,12 @@ def MyCast_EqualOperatorOp : MyCast_Op<"equalOperator"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "==";
+    }];
 }
 
 def MyCast_NotEqualOperatorOp : MyCast_Op<"notEqualOperator"> {
@@ -630,6 +1197,12 @@ def MyCast_NotEqualOperatorOp : MyCast_Op<"notEqualOperator"> {
     let results = (outs MyCast_NotEqualOperatorType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "!=";
     }];
 }
 
@@ -644,6 +1217,16 @@ def MyCast_RelationalExpressionOp : MyCast_Op<"relationalExpression"> {
         `,` $rval  `:` type($rval)`)``)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getLval().getDefiningOp()).prettyPrint(out, 0);
+        out << " ";
+        llvm::cast<PrettyPrintOpInterface>(getOp().getDefiningOp()).prettyPrint(out, 0);
+        out << " ";
+        llvm::cast<PrettyPrintOpInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
+    }];
 }
 
 def MyCast_GeOperatorOp : MyCast_Op<"geOperator"> {
@@ -651,6 +1234,12 @@ def MyCast_GeOperatorOp : MyCast_Op<"geOperator"> {
     let results = (outs MyCast_GeOperatorType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << ">=";
     }];
 }
 
@@ -660,6 +1249,12 @@ def MyCast_GtOperatorOp : MyCast_Op<"gtOperator"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << ">";
+    }];
 }
 
 def MyCast_LeOperatorOp : MyCast_Op<"leOperator"> {
@@ -668,6 +1263,12 @@ def MyCast_LeOperatorOp : MyCast_Op<"leOperator"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "<=";
+    }];
 }
 
 def MyCast_LtOperatorOp : MyCast_Op<"ltOperator"> {
@@ -675,6 +1276,12 @@ def MyCast_LtOperatorOp : MyCast_Op<"ltOperator"> {
     let results = (outs MyCast_LtOperatorType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "<";
     }];
 }
 
@@ -689,6 +1296,16 @@ def MyCast_ShiftExpressionOp : MyCast_Op<"shiftExpression"> {
         `,` $rval  `:` type($rval)`)``)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getLval().getDefiningOp()).prettyPrint(out, 0);
+        out << " ";
+        llvm::cast<PrettyPrintOpInterface>(getOp().getDefiningOp()).prettyPrint(out, 0);
+        out << " ";
+        llvm::cast<PrettyPrintOpInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
+    }];
 }
 
 def MyCast_LshiftOperatorOp : MyCast_Op<"lshiftOperator"> {
@@ -697,6 +1314,12 @@ def MyCast_LshiftOperatorOp : MyCast_Op<"lshiftOperator"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "<<";
+    }];
 }
 
 def MyCast_RshiftOperatorOp : MyCast_Op<"rshiftOperator"> {
@@ -704,6 +1327,12 @@ def MyCast_RshiftOperatorOp : MyCast_Op<"rshiftOperator"> {
     let results = (outs MyCast_RshiftOperatorType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << ">>";
     }];
 }
 
@@ -718,6 +1347,16 @@ def MyCast_AdditiveExpressionOp : MyCast_Op<"additiveExpression"> {
         `,` $rval  `:` type($rval)`)``)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getLval().getDefiningOp()).prettyPrint(out, 0);
+        out << " ";
+        llvm::cast<PrettyPrintOpInterface>(getOp().getDefiningOp()).prettyPrint(out, 0);
+        out << " ";
+        llvm::cast<PrettyPrintOpInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
+    }];
 }
 
 def MyCast_PlusOperatorOp : MyCast_Op<"plusOperator"> {
@@ -726,6 +1365,12 @@ def MyCast_PlusOperatorOp : MyCast_Op<"plusOperator"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "+";
+    }];
 }
 
 def MyCast_MinusOperatorOp : MyCast_Op<"minusOperator"> {
@@ -733,6 +1378,12 @@ def MyCast_MinusOperatorOp : MyCast_Op<"minusOperator"> {
     let results = (outs MyCast_MinusOperatorType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "-";
     }];
 }
 
@@ -747,6 +1398,16 @@ def MyCast_MultiplicativeExpressionOp : MyCast_Op<"MultiplicativeExpression"> {
         `,` $rval  `:` type($rval)`)``)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getLval().getDefiningOp()).prettyPrint(out, 0);
+        out << " ";
+        llvm::cast<PrettyPrintOpInterface>(getOp().getDefiningOp()).prettyPrint(out, 0);
+        out << " ";
+        llvm::cast<PrettyPrintOpInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
+    }];
 }
 
 def MyCast_MultOperatorOp : MyCast_Op<"multOperator"> {
@@ -755,13 +1416,25 @@ def MyCast_MultOperatorOp : MyCast_Op<"multOperator"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "*";
+    }];
 }
 
-def MyCast_DivOperatorOp : MyCast_Op<"dvOperator"> {
+def MyCast_DivOperatorOp : MyCast_Op<"divOperator"> {
     let arguments = (ins );
     let results = (outs MyCast_DivOperatorType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "/";
     }];
 }
 
@@ -770,6 +1443,12 @@ def MyCast_ModuloOperatorOp : MyCast_Op<"moduloOperator"> {
     let results = (outs MyCast_ModuloOperatorType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "%";
     }];
 }
 
@@ -782,6 +1461,15 @@ def MyCast_CastExpressionOp : MyCast_Op<"castExpression"> {
         `,``(` $expr `:` type($expr) `)``)` 
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "(";
+        llvm::cast<PrettyPrintOpInterface>(getNewType().getDefiningOp()).prettyPrint(out, 0);
+        out << ") ";
+        llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
+    }];
 }
 
 def MyCast_UnopExpressionOp : MyCast_Op<"unopExpression"> {
@@ -793,6 +1481,13 @@ def MyCast_UnopExpressionOp : MyCast_Op<"unopExpression"> {
         `,` `(` $expr `:` type($expr)`)``)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getOp().getDefiningOp()).prettyPrint(out, 0);
+        llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
+    }];
 }
 
 def MyCast_IncrOperatorOp : MyCast_Op<"incrOperator"> {
@@ -800,6 +1495,12 @@ def MyCast_IncrOperatorOp : MyCast_Op<"incrOperator"> {
     let results = (outs MyCast_IncrOperatorType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "++";
     }];
 }
 
@@ -809,6 +1510,12 @@ def MyCast_DecrOperatorOp : MyCast_Op<"decrOperator"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "--";
+    }];
 }
 
 def MyCast_AddrofOperatorOp : MyCast_Op<"addrofOperator"> {
@@ -816,6 +1523,12 @@ def MyCast_AddrofOperatorOp : MyCast_Op<"addrofOperator"> {
     let results = (outs MyCast_AddrofOperatorType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "&";
     }];
 }
 
@@ -825,6 +1538,12 @@ def MyCast_DerefOperatorOp : MyCast_Op<"derefOperator"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "*";
+    }];
 }
 
 def MyCast_PositiveOperatorOp : MyCast_Op<"positiveOperator"> {
@@ -833,13 +1552,25 @@ def MyCast_PositiveOperatorOp : MyCast_Op<"positiveOperator"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "+";
+    }];
 }
 
-def MyCast_NegativeOperatorOp : MyCast_Op<"egativeOperator"> {
+def MyCast_NegativeOperatorOp : MyCast_Op<"negativeOperator"> {
     let arguments = (ins );
     let results = (outs MyCast_NegativeOperatorType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "-";
     }];
 }
 
@@ -849,6 +1580,12 @@ def MyCast_NotOperatorOp : MyCast_Op<"notOperator"> {
     let assemblyFormat = [{
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "~";
+    }];
 }
 
 def MyCast_LnotOperatorOp : MyCast_Op<"lnotOperator"> {
@@ -856,6 +1593,12 @@ def MyCast_LnotOperatorOp : MyCast_Op<"lnotOperator"> {
     let results = (outs MyCast_LnotOperatorType:$res);
     let assemblyFormat = [{
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "!";
     }];
 }
 
@@ -868,6 +1611,17 @@ def MyCast_SizeofExpressionOp : MyCast_Op<"sizeofExpression", [AttrSizedOperandS
         `,` `(` $typeExpr `:` type($typeExpr) `)``)` 
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "sizeof (";
+        if (getExpr())
+            llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
+        if (getTypeExpr())
+            llvm::cast<PrettyPrintOpInterface>(getTypeExpr().getDefiningOp()).prettyPrint(out, 0);
+        out << ");";
+    }];
 }
 
 def MyCast_ArrayExpressionOp : MyCast_Op<"arrayExpression"> {
@@ -878,6 +1632,15 @@ def MyCast_ArrayExpressionOp : MyCast_Op<"arrayExpression"> {
         `(``(` $expr `:` type($expr) `)`
         `,` `(` $index `:` type($index) `)``)` 
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
+        out << "[";
+        llvm::cast<PrettyPrintOpInterface>(getIndex().getDefiningOp()).prettyPrint(out, 0);
+        out << "]";
     }];
 }
 
@@ -890,6 +1653,20 @@ def MyCast_FunCallExpressionOp : MyCast_Op<"funCallExpression"> {
         `,` `(` $args `:` type($args) `)``)` 
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
+        out << " (";
+        bool first = true;
+        for (auto arg: getArgs()) {
+            if (!first) out << ", ";
+            first = false;
+            llvm::cast<PrettyPrintOpInterface>(arg.getDefiningOp()).prettyPrint(out, 0);
+        }
+        out << ")";
+    }];
 }
 
 def MyCast_FieldExpressionOp : MyCast_Op<"fieldExpression"> {
@@ -900,6 +1677,13 @@ def MyCast_FieldExpressionOp : MyCast_Op<"fieldExpression"> {
         `(``(` $expr `:` type($expr) `)`
         `,` $field `)` 
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
+        out << "." << getField().getValue().data();
     }];
 }
 
@@ -912,6 +1696,13 @@ def MyCast_PtrFieldExpressionOp : MyCast_Op<"ptrFieldExpression"> {
         `,` $field `)` 
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
+        out << "->" << getField().getValue().data();
+    }];
 }
 
 def MyCast_PostincrExpressionOp : MyCast_Op<"postincrExpression"> {
@@ -920,6 +1711,13 @@ def MyCast_PostincrExpressionOp : MyCast_Op<"postincrExpression"> {
     let assemblyFormat = [{
         `(` $expr `:` type($expr) `)`
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
+        out << "++";
     }];
 }
 
@@ -930,6 +1728,13 @@ def MyCast_PostdecrExpressionOp : MyCast_Op<"postdecrExpression"> {
         `(` $expr `:` type($expr) `)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
+        out << "--";
+    }];
 }
 
 def MyCast_VarExpressionOp : MyCast_Op<"varExpression"> {
@@ -938,6 +1743,12 @@ def MyCast_VarExpressionOp : MyCast_Op<"varExpression"> {
     let assemblyFormat = [{
         `(` $name `)`
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << getName().getValue().data();
     }];
 }
 
@@ -948,6 +1759,12 @@ def MyCast_IntExpressionOp : MyCast_Op<"intExpression"> {
         `(` $val `)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << *getVal().getValue().getRawData();
+    }];
 }
 
 def MyCast_FloatExpressionOp : MyCast_Op<"floatExpression"> {
@@ -956,6 +1773,12 @@ def MyCast_FloatExpressionOp : MyCast_Op<"floatExpression"> {
     let assemblyFormat = [{
         `(` $val `)`
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << getVal().getValue().convertToDouble();
     }];
 }
 
@@ -966,6 +1789,14 @@ def MyCast_ParentExpressionOp : MyCast_Op<"parentExpression"> {
         `(` $expr `:` type($expr) `)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "(";
+        llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
+        out << ")";
+    }];
 }
 
 def MyCast_StructureExpressionOp : MyCast_Op<"structureExpression"> {
@@ -974,6 +1805,19 @@ def MyCast_StructureExpressionOp : MyCast_Op<"structureExpression"> {
     let assemblyFormat = [{
         `(` $val `:` type($val) `)`
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "{";
+        bool first = true;
+        for (auto val: getVal()) {
+            if (!first) out << ", ";
+            first = false;
+            llvm::cast<PrettyPrintOpInterface>(val.getDefiningOp()).prettyPrint(out, 0);
+        }
+        out << "}";
     }];
 }
 
@@ -986,6 +1830,18 @@ def MyCast_GenericExpressionOp : MyCast_Op<"genericExpression"> {
         `,` `(` $cases `:` type($cases)`)``)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "_Generic (";
+        llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
+        for (auto case_: getCases()) {
+            out << ", ";
+            llvm::cast<PrettyPrintOpInterface>(case_.getDefiningOp()).prettyPrint(out, 0);
+        }
+        out << ")";
+    }];
 }
 
 def MyCast_TypeGenericItemOp : MyCast_Op<"typeGenericItem"> {
@@ -997,6 +1853,14 @@ def MyCast_TypeGenericItemOp : MyCast_Op<"typeGenericItem"> {
         `,` `(` $body `:` type($body)`)``)`
         attr-dict
     }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        llvm::cast<PrettyPrintOpInterface>(getCond().getDefiningOp()).prettyPrint(out, 0);
+        out << ": ";
+        llvm::cast<PrettyPrintOpInterface>(getBody().getDefiningOp()).prettyPrint(out, 0);
+    }];
 }
 
 def MyCast_DefaultGenericItemOp : MyCast_Op<"defaultGenericItem"> {
@@ -1005,6 +1869,13 @@ def MyCast_DefaultGenericItemOp : MyCast_Op<"defaultGenericItem"> {
     let assemblyFormat = [{
         `,` `(` $body `:` type($body)`)``)`
         attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << "default: ";
+        llvm::cast<PrettyPrintOpInterface>(getBody().getDefiningOp()).prettyPrint(out, 0);
     }];
 }
 

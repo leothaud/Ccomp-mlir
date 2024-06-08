@@ -11,6 +11,8 @@
 #define MYCAST_MYCASTDIALECT_H
 
 #include "mlir/IR/Dialect.h"
+#include "mlir/IR/OpDefinition.h"
 #include "Dialect/MyCast/MyCastOpsDialect.h.inc"
+#include "Dialect/MyCast/MyCastInterface.h.inc"
 
 #endif // MYCAST_MYCASTDIALECT_H

@@ -12,6 +12,7 @@
 #define MYCAST_DIALECT
 
 include "mlir/IR/OpBase.td"
+include "Dialect/MyCast/MyCastInterface.td"
 
 //===----------------------------------------------------------------------===//
 // MyCast dialect definition.
@@ -34,6 +35,18 @@ def MyCast_Dialect : Dialect {
 //===----------------------------------------------------------------------===//
 
 class MyCast_Op<string mnemonic, list<Trait> traits = []> :
-    Op<MyCast_Dialect, mnemonic, traits>;
+    Op<MyCast_Dialect, mnemonic, !listconcat(traits, [DeclareOpInterfaceMethods<PrettyPrintOpInterface, ["prettyPrint"]>])> {
+
+    code prettyPrintBody = [{}];
+
+    code prettyPrintDefinition = [{
+        void ::ccomp::myCast::}] # !strconcat(!toupper(!substr(mnemonic,0,1)), !substr(mnemonic,1,!size(mnemonic))) # [{Op::prettyPrint(std::ostringstream &out, int indent) {
+        }] # prettyPrintBody # [{
+        }
+    }];
+
+    let extraClassDefinition = prettyPrintDefinition # [{}];
+
+}
 
 #endif // MYCAST_DIALECT

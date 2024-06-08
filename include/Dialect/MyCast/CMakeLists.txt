@@ -1,3 +1,4 @@
 add_mlir_dialect(MyCastOps myCast)
+add_mlir_interface(MyCastInterface)
 add_mlir_doc(MyCastDialect MyCastDialect MyCast/ -gen-dialect-doc)
 add_mlir_doc(MyCastOps MyCastOps MyCast/ -gen-op-doc)

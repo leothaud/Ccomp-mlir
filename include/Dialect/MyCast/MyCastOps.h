@@ -19,6 +19,7 @@
 #include "mlir/Bytecode/BytecodeOpInterface.h"
 
 #include "Dialect/MyCast/MyCastOpsTypes.h"
+#include "Dialect/MyCast/MyCastDialect.h"
 
 #define GET_OP_CLASSES
 #include "Dialect/MyCast/MyCastOps.h.inc"
