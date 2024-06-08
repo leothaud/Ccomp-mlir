@@ -35,17 +35,34 @@ def MyCast_Dialect : Dialect {
 //===----------------------------------------------------------------------===//
 
 class MyCast_Op<string mnemonic, list<Trait> traits = []> :
-    Op<MyCast_Dialect, mnemonic, !listconcat(traits, [DeclareOpInterfaceMethods<PrettyPrintOpInterface, ["prettyPrint"]>])> {
+    Op<MyCast_Dialect, mnemonic, !listconcat(traits, [DeclareOpInterfaceMethods<PrettyPrintOpInterface, ["prettyPrint"]>,
+                                                      DeclareOpInterfaceMethods<CheckDefinedVarOpInterface, ["checkDefinedVar"]>])> {
 
     code prettyPrintBody = [{}];
 
     code prettyPrintDefinition = [{
-        void ::ccomp::myCast::}] # !strconcat(!toupper(!substr(mnemonic,0,1)), !substr(mnemonic,1,!size(mnemonic))) # [{Op::prettyPrint(std::ostringstream &out, int indent) {
+        void ccomp::myCast::}] #
+            !strconcat(!toupper(!substr(mnemonic,0,1)),
+                !substr(mnemonic,1,!size(mnemonic))) #
+        [{Op::prettyPrint(std::ostringstream &out, int indent) {
         }] # prettyPrintBody # [{
         }
     }];
 
-    let extraClassDefinition = prettyPrintDefinition # [{}];
+    code checkDefinedVarBody = [{
+        return declared;
+    }];
+
+    code checkDefinedVarDefinition = [{
+        llvm::SmallVector<std::string> ccomp::myCast::}] #
+            !strconcat(!toupper(!substr(mnemonic,0,1)),
+                !substr(mnemonic,1,!size(mnemonic))) #
+        [{Op::checkDefinedVar(llvm::SmallVector<std::string> declared) {
+        }] # checkDefinedVarBody # [{
+        }
+    }];
+
+    let extraClassDefinition = checkDefinedVarDefinition # prettyPrintDefinition # [{}];
 
 }
 

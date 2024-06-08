@@ -24,4 +24,10 @@ def PrettyPrintAstPass : Pass<"pretty-print-ast", "ccomp::myCast::ProgramOp"> {
   ];
 }
 
+def CheckDefinedVarPass : Pass<"check-defined-var", "ccomp::myCast::ProgramOp"> {
+  let summary = "check if every used variable has been declared.";
+  let constructor = "ccomp::myCast::createCheckDefinedVarPass()";
+  let dependentDialects = ["ccomp::myCast::MyCastDialect"];
+}
+
 #endif // MYCAST_PASSES_TD

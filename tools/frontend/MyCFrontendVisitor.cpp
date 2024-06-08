@@ -1643,8 +1643,8 @@ std::any MyCFrontendVisitor::visitVarExpression(
   VisitRes result;
   result.vars = "%" + std::to_string(getNextVarIndex());
   result.types = "!myCast.varExpression";
-  result.program = result.vars + " = myCast.varExpression(" +
-                   context->name->toString() + ")";
+  result.program = result.vars + " = myCast.varExpression(\"" +
+                   context->name->getText() + "\")\n";
   return result;
 }
 

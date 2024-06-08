@@ -15,8 +15,18 @@ include "mlir/IR/OpBase.td"
 def PrettyPrintOpInterface : OpInterface<"PrettyPrintOpInterface"> {
   let methods = [
     InterfaceMethod<
-      "todo",
+      "An interface for operation that have a prettyPrint method.",
       "void", "prettyPrint", (ins "::std::ostringstream &":$out, "int":$indent), [{}], [{ {} }]
+    >
+  ];
+  let cppNamespace = "::ccomp::myCast";
+}
+
+def CheckDefinedVarOpInterface : OpInterface<"CheckDefinedVarOpInterface"> {
+  let methods = [
+    InterfaceMethod<
+      "An interface for operation that have a checkDefinedVar method.",
+      "llvm::SmallVector<std::string>", "checkDefinedVar", (ins "llvm::SmallVector<std::string>":$declared), [{}], [{ {} }]
     >
   ];
   let cppNamespace = "::ccomp::myCast";

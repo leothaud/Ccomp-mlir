@@ -20,10 +20,13 @@ namespace ccomp {
     namespace myCast {
 
         std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createPrettyPrintAstPass();
+        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createCheckDefinedVarPass();
 
 
 #define GEN_PASS_DECL_PRETTYPRINTASTPASS
 #define GEN_PASS_DEF_PRETTYPRINTASTPASS
+#define GEN_PASS_DECL_CHECKDEFINEDVARPASS
+#define GEN_PASS_DEF_CHECKDEFINEDVARPASS
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES
         #include "Transforms/MyCast/Passes.h.inc"
