@@ -3,3 +3,4 @@ antlr_gen/
 build/
 .vscode/
 .antlr/
+.cache/
