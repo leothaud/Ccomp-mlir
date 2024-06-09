@@ -88,7 +88,7 @@ TYPEDEF: 'typedef';
 ID: [a-zA-Z] [a-zA-Z0-9_]*;
 FLOATCST: [0-9]+ '.' [0-9]+;
 INTCST: [0-9]+;
-STRINGCST: '"' ~["] '"';
+STRINGCST: '"' ~["]* '"';
 
 program:
     items+=programItem+;
@@ -299,7 +299,7 @@ sizeofExpression: SIZEOF (expr=unaryExpression | (LEFTPARENT type_=type RIGHTPAR
 postfixExpression:
     primaryExpression #primaryPostfixExpression
     | expr=postfixExpression LEFTSBRACKET index=expression RIGHTSBRACKET #arrayExpression
-    | expr=postfixExpression LEFTPARENT (args+=assignmentExpression (COMMA args+=assignmentExpression)*)? RIGHTPARENT #funCallExpression
+    | funName=ID LEFTPARENT (args+=assignmentExpression (COMMA args+=assignmentExpression)*)? RIGHTPARENT #funCallExpression
     | expr=postfixExpression DOT field=ID #fieldExpression
     | expr=postfixExpression TO field=ID #ptrFieldExpression
     | expr=postfixExpression DOUBLEPLUS #postincrExpression
@@ -309,6 +309,7 @@ primaryExpression:
     name=ID #varExpression
     | val=INTCST #intExpression
     | val=FLOATCST #floatExpression
+    | val=STRINGCST #stringExpression
     | LEFTPARENT expr=expression RIGHTPARENT #parentExpression
     | LEFTBRACKET (val+=assignmentExpression (COMMA val+=assignmentExpression)*)? RIGHTBRACKET #structureExpression
     | GENERIC LEFTPARENT expr=assignmentExpression (COMMA cases+=genericItem)+ RIGHTPARENT #genericExpression

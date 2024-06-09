@@ -1591,16 +1591,13 @@ std::any MyCFrontendVisitor::visitFieldExpression(
 std::any MyCFrontendVisitor::visitFunCallExpression(
     MyCParser::FunCallExpressionContext *context) {
   VisitRes result;
-  VisitRes exprRes =
-      std::any_cast<VisitRes>(visitPostfixExpression(context->expr));
   VisitRes argsRes;
   for (auto *arg : context->args)
     argsRes += std::any_cast<VisitRes>(visitAssignmentExpression(arg));
   result.vars = "%" + std::to_string(getNextVarIndex());
   result.types = "!myCast.funCallExpression";
-  result.program = exprRes.program + argsRes.program + result.vars +
-                   " = myCast.funCallExpression ((" + exprRes.vars + " : " +
-                   exprRes.types + "),";
+  result.program = argsRes.program + result.vars +
+                   " = myCast.funCallExpression (\"" + context->funName->getText() + "\",";
   if (!context->args.empty())
     result.program += "(" + argsRes.vars + " : " + argsRes.types + ")";
   result.program += ")\n";
@@ -1628,6 +1625,8 @@ std::any MyCFrontendVisitor::visitPrimaryExpression(
     return visitIntExpression(ctx);
   if (auto *ctx = dynamic_cast<MyCParser::FloatExpressionContext *>(context))
     return visitFloatExpression(ctx);
+  if (auto *ctx = dynamic_cast<MyCParser::StringExpressionContext *>(context))
+    return visitStringExpression(ctx);
   if (auto *ctx = dynamic_cast<MyCParser::ParentExpressionContext *>(context))
     return visitParentExpression(ctx);
   if (auto *ctx =
@@ -1664,6 +1663,16 @@ std::any MyCFrontendVisitor::visitFloatExpression(
   result.vars = "%" + std::to_string(getNextVarIndex());
   result.types = "!myCast.floatExpression";
   result.program = result.vars + " = myCast.floatExpression(" +
+                   context->val->getText() + ")\n";
+  return result;
+}
+
+std::any MyCFrontendVisitor::visitStringExpression(
+    MyCParser::StringExpressionContext *context) {
+  VisitRes result;
+  result.vars = "%" + std::to_string(getNextVarIndex());
+  result.types = "!myCast.stringExpression";
+  result.program = result.vars + " = myCast.stringExpression (" +
                    context->val->getText() + ")\n";
   return result;
 }

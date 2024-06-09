@@ -141,6 +141,7 @@ def MyCast_PrimaryExpressionType : MyCast_Type<"MyCast_PrimaryExpression", "prim
 def MyCast_VarExpressionType : MyCast_Type<"MyCast_VarExpression", "varExpression">{}
 def MyCast_IntExpressionType : MyCast_Type<"MyCast_IntExpression", "intExpression">{}
 def MyCast_FloatExpressionType : MyCast_Type<"MyCast_FloatExpression", "floatExpression">{}
+def MyCast_StringExpressionType : MyCast_Type<"MyCast_StringExpression", "stringExpression">{}
 def MyCast_ParentExpressionType : MyCast_Type<"MyCast_ParentExpression", "parentExpression">{}
 def MyCast_StructureExpressionType : MyCast_Type<"MyCast_StructureExpression", "structureExpression">{}
 def MyCast_GenericExpressionType : MyCast_Type<"MyCast_GenericExpression", "genericExpression">{}
@@ -323,6 +324,7 @@ def MyCast_PostdecrExpressionPred : CPred<"mlir::isa<MyCast_PostdecrExpressionTy
 def MyCast_VarExpressionPred : CPred<"mlir::isa<MyCast_VarExpressionType>($_self)">;
 def MyCast_IntExpressionPred : CPred<"mlir::isa<MyCast_IntExpressionType>($_self)">;
 def MyCast_FloatExpressionPred : CPred<"mlir::isa<MyCast_FloatExpressionType>($_self)">;
+def MyCast_StringExpressionPred : CPred<"mlir::isa<MyCast_StringExpressionType>($_self)">;
 def MyCast_ParentExpressionPred : CPred<"mlir::isa<MyCast_ParentExpressionType>($_self)">;
 def MyCast_StructureExpressionPred : CPred<"mlir::isa<MyCast_StructureExpressionType>($_self)">;
 def MyCast_GenericExpressionPred : CPred<"mlir::isa<MyCast_GenericExpressionType>($_self)">;
@@ -341,6 +343,7 @@ def MyCast_PrimaryExpressionPred : Or<[
   MyCast_VarExpressionPred,
   MyCast_IntExpressionPred,
   MyCast_FloatExpressionPred,
+  MyCast_StringExpressionPred,
   MyCast_ParentExpressionPred,
   MyCast_StructureExpressionPred,
   MyCast_GenericExpressionPred

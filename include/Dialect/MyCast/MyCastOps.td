@@ -1765,11 +1765,11 @@ def MyCast_ArrayExpressionOp : MyCast_Op<"arrayExpression"> {
 }
 
 def MyCast_FunCallExpressionOp : MyCast_Op<"funCallExpression"> {
-    let arguments = (ins Type<MyCast_PostfixExpressionPred>:$expr,
+    let arguments = (ins Builtin_StringAttr:$funName,
                          Variadic<Type<MyCast_AssignmentExpressionPred>>:$args);
     let results = (outs MyCast_FunCallExpressionType:$res);
     let assemblyFormat = [{
-        `(``(` $expr `:` type($expr) `)`
+        `(` $funName
         `,` `(` $args `:` type($args) `)``)` 
         attr-dict
     }];
@@ -1777,7 +1777,7 @@ def MyCast_FunCallExpressionOp : MyCast_Op<"funCallExpression"> {
     code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
-        llvm::cast<MyCastInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
+        out << getFunName().getValue().data();
         out << " (";
         bool first = true;
         for (auto arg: getArgs()) {
@@ -1787,13 +1787,6 @@ def MyCast_FunCallExpressionOp : MyCast_Op<"funCallExpression"> {
         }
         out << ")";
     }];
-
-   code checkDefinedVarBody = [{
-       for (auto arg: getArgs()) {
-           declared = llvm::cast<MyCastInterface>(arg.getDefiningOp()).checkDefinedVar(declared);
-       }
-       return declared;
-   }];
 }
 
 def MyCast_FieldExpressionOp : MyCast_Op<"fieldExpression"> {
@@ -1915,6 +1908,21 @@ def MyCast_FloatExpressionOp : MyCast_Op<"floatExpression"> {
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << getVal().getValue().convertToDouble();
+    }];
+}
+
+def MyCast_StringExpressionOp : MyCast_Op<"stringExpression"> {
+    let arguments = (ins Builtin_StringAttr:$val);
+    let results = (outs MyCast_StringExpressionType:$res);
+    let assemblyFormat = [{
+        `(` $val `)`
+        attr-dict
+    }];
+
+    code prettyPrintBody = [{
+        for (int i = 0; i < indent; ++i)
+            out << "  ";
+        out << getVal().getValue().data();
     }];
 }
 

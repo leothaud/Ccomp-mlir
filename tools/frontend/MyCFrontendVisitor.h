@@ -287,6 +287,8 @@ public:
 
   std::any visitFloatExpression(MyCParser::FloatExpressionContext *context);
 
+  std::any visitStringExpression(MyCParser::StringExpressionContext *context);
+
   std::any visitParentExpression(MyCParser::ParentExpressionContext *context);
 
   std::any

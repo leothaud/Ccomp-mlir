@@ -16,6 +16,7 @@ typedef union myUnion myUnion_t;
 int main(int argc, char** argv) {
     int x = 17;
     int y;
+    char *s = "myString";
     for (int i = 3; i < 6; ++i)
         printf(i);
 //    printf(i);
