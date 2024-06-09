@@ -38,12 +38,12 @@ def MyCast_ProgramOp : MyCast_Op<"program", [IsolatedFromAbove]> {
             }
     }];
 
-    code checkDefinedVarBody = [{
-        for (auto item: getItems()) {
-            declared = llvm::cast<CheckDefinedVarOpInterface>(item.getDefiningOp()).checkDefinedVar(declared);
-        }
-        return declared;
-    }];
+   code checkDefinedVarBody = [{
+       for (auto item: getItems()) {
+           declared = llvm::cast<CheckDefinedVarOpInterface>(item.getDefiningOp()).checkDefinedVar(declared);
+       }
+       return declared;
+   }];
 }
 
 def MyCast_FunDefOp : MyCast_Op<"funDef"> {
@@ -219,12 +219,6 @@ def MyCast_UnionDefOp : MyCast_Op<"unionDef"> {
         }
         out << "}";
     }];
-
-    code checkDefinedVarBody = [{
-        for (auto decl: getDecls())
-            llvm::cast<CheckDefinedVarOpInterface>(decl.getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_StructDefOp : MyCast_Op<"structDef"> {
@@ -245,12 +239,6 @@ def MyCast_StructDefOp : MyCast_Op<"structDef"> {
             out << "\n";
         }
         out << "}";
-    }];
-
-    code checkDefinedVarBody = [{
-        for (auto decl: getDecls())
-            llvm::cast<CheckDefinedVarOpInterface>(decl.getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -280,13 +268,6 @@ def MyCast_EnumDefOp : MyCast_Op<"enumDef"> {
             out << "  ";
         out << "}";
     }];
-
-    code checkDefinedVarBody = [{
-        for (auto item: getItems())
-            llvm::cast<CheckDefinedVarOpInterface>(item.getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
-
 }
 
 def MyCast_EnumItemOp : MyCast_Op<"enumItem"> {
@@ -307,12 +288,6 @@ def MyCast_EnumItemOp : MyCast_Op<"enumItem"> {
             out << " = ";
             llvm::cast<PrettyPrintOpInterface>(getValue().getDefiningOp()).prettyPrint(out, 0);
         }
-    }];
-
-    code checkDefinedVarBody = [{
-        if (getValue())
-            llvm::cast<CheckDefinedVarOpInterface>(getValue().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -413,12 +388,6 @@ def MyCast_ExpressionStatementOp : MyCast_Op<"expressionStatement"> {
             llvm::cast<PrettyPrintOpInterface>(getValue().getDefiningOp()).prettyPrint(out, indent);
         out << ";\n";
     }];
-
-    code checkDefinedVarBody = [{
-        if (getValue())
-           llvm::cast<CheckDefinedVarOpInterface>(getValue().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_IfStatementOp : MyCast_Op<"ifStatement"> {
@@ -447,14 +416,6 @@ def MyCast_IfStatementOp : MyCast_Op<"ifStatement"> {
             out <<"else\n";
             llvm::cast<PrettyPrintOpInterface>(getElsePart().getDefiningOp()).prettyPrint(out, indent+1);
         }
-    }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getCond().getDefiningOp()).checkDefinedVar(declared);
-        llvm::cast<CheckDefinedVarOpInterface>(getThenPart().getDefiningOp()).checkDefinedVar(declared);
-        if (getElsePart())
-           llvm::cast<CheckDefinedVarOpInterface>(getElsePart().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -485,13 +446,6 @@ def MyCast_SwitchStatementOp : MyCast_Op<"switchStatement"> {
             out << "  ";
         out << "}";
     }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getCond().getDefiningOp()).checkDefinedVar(declared);
-        for (auto item: getItems())
-           llvm::cast<CheckDefinedVarOpInterface>(item.getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_SwitchCaseItemOp : MyCast_Op<"switchCaseItem"> {
@@ -512,12 +466,6 @@ def MyCast_SwitchCaseItemOp : MyCast_Op<"switchCaseItem"> {
         llvm::cast<PrettyPrintOpInterface>(getBody().getDefiningOp()).prettyPrint(out, indent+1);
         out << "\n";
     }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getCond().getDefiningOp()).checkDefinedVar(declared);
-        llvm::cast<CheckDefinedVarOpInterface>(getBody().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_SwitchDefaultItemOp : MyCast_Op<"switchDefaultItem"> {
@@ -534,11 +482,6 @@ def MyCast_SwitchDefaultItemOp : MyCast_Op<"switchDefaultItem"> {
         out << "default:\n";
         llvm::cast<PrettyPrintOpInterface>(getBody().getDefiningOp()).prettyPrint(out, indent+1);
         out << "\n";
-    }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getBody().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -558,12 +501,6 @@ def MyCast_WhileStatementOp : MyCast_Op<"whileStatement"> {
         llvm::cast<PrettyPrintOpInterface>(getCond().getDefiningOp()).prettyPrint(out, 0);
         out << ")\n";
         llvm::cast<PrettyPrintOpInterface>(getBody().getDefiningOp()).prettyPrint(out, indent+1);
-    }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getCond().getDefiningOp()).checkDefinedVar(declared);
-        llvm::cast<CheckDefinedVarOpInterface>(getBody().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -586,12 +523,6 @@ def MyCast_DoWhileStatementOp : MyCast_Op<"doWhileStatement"> {
         out << "while (";
         llvm::cast<PrettyPrintOpInterface>(getCond().getDefiningOp()).prettyPrint(out, 0);
         out << ");\n";
-    }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getCond().getDefiningOp()).checkDefinedVar(declared);
-        llvm::cast<CheckDefinedVarOpInterface>(getBody().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -698,12 +629,6 @@ def MyCast_ReturnStatementOp : MyCast_Op<"returnStatement"> {
             llvm::cast<PrettyPrintOpInterface>(getValue().getDefiningOp()).prettyPrint(out, 0);
         }
         out << ";";
-    }];
-
-    code checkDefinedVarBody = [{
-        if (getValue())
-            llvm::cast<CheckDefinedVarOpInterface>(getValue().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -812,6 +737,8 @@ def MyCast_UnsignedLongLongTypeOp : MyCast_Op<"unsignedLongLongType"> {
             out << "  ";
         out << "unsigned long long";
     }];
+
+    code typeCompatibleWithInt = [{true}];
 }
 
 def MyCast_UnsignedLongTypeOp : MyCast_Op<"unsignedLongType"> {
@@ -826,6 +753,8 @@ def MyCast_UnsignedLongTypeOp : MyCast_Op<"unsignedLongType"> {
             out << "  ";
         out << "unsigned long";
     }];
+
+    code typeCompatibleWithInt = [{true}];
 }
 
 def MyCast_UnsignedShortTypeOp : MyCast_Op<"UnsignedShortType"> {
@@ -840,6 +769,8 @@ def MyCast_UnsignedShortTypeOp : MyCast_Op<"UnsignedShortType"> {
             out << "  ";
         out << "unsigned short";
     }];
+
+    code typeCompatibleWithInt = [{true}];
 }
 
 def MyCast_UnsignedCharTypeOp : MyCast_Op<"UnsignedCharType"> {
@@ -854,6 +785,8 @@ def MyCast_UnsignedCharTypeOp : MyCast_Op<"UnsignedCharType"> {
             out << "  ";
         out << "unsigned char";
     }];
+
+    code typeCompatibleWithInt = [{true}];
 }
 
 def MyCast_UnsignedIntTypeOp : MyCast_Op<"UnsignedIntType"> {
@@ -868,6 +801,8 @@ def MyCast_UnsignedIntTypeOp : MyCast_Op<"UnsignedIntType"> {
             out << "  ";
         out << "unsigned int";
     }];
+
+    code typeCompatibleWithInt = [{true}];
 }
 
 
@@ -883,6 +818,8 @@ def MyCast_LongLongTypeOp : MyCast_Op<"longLongType"> {
             out << "  ";
         out << "long long";
     }];
+
+    code typeCompatibleWithInt = [{true}];
 }
 
 def MyCast_LongTypeOp : MyCast_Op<"longType"> {
@@ -897,6 +834,8 @@ def MyCast_LongTypeOp : MyCast_Op<"longType"> {
             out << "  ";
         out << "long";
     }];
+
+    code typeCompatibleWithInt = [{true}];
 }
 
 def MyCast_ShortTypeOp : MyCast_Op<"shortType"> {
@@ -911,6 +850,8 @@ def MyCast_ShortTypeOp : MyCast_Op<"shortType"> {
             out << "  ";
         out << "short";
     }];
+
+    code typeCompatibleWithInt = [{true}];
 }
 
 def MyCast_CharTypeOp : MyCast_Op<"charType"> {
@@ -925,6 +866,8 @@ def MyCast_CharTypeOp : MyCast_Op<"charType"> {
             out << "  ";
         out << "char";
     }];
+
+    code typeCompatibleWithInt = [{true}];
 }
 
 def MyCast_IntTypeOp : MyCast_Op<"intType"> {
@@ -939,6 +882,8 @@ def MyCast_IntTypeOp : MyCast_Op<"intType"> {
             out << "  ";
         out << "int";
     }];
+
+    code typeCompatibleWithInt = [{true}];
 }
 
 def MyCast_FloatTypeOp : MyCast_Op<"floatType"> {
@@ -953,6 +898,8 @@ def MyCast_FloatTypeOp : MyCast_Op<"floatType"> {
             out << "  ";
         out << "float";
     }];
+
+    code typeCompatibleWithInt = [{true}];
 }
 
 def MyCast_DoubleTypeOp : MyCast_Op<"doubleType"> {
@@ -967,6 +914,8 @@ def MyCast_DoubleTypeOp : MyCast_Op<"doubleType"> {
             out << "  ";
         out << "double";
     }];
+
+    code typeCompatibleWithInt = [{true}];
 }
 
 def MyCast_EnumTypeOp : MyCast_Op<"enumType"> {
@@ -1045,12 +994,6 @@ def MyCast_AssignmentExpressionOp : MyCast_Op<"assignmentExpression"> {
         llvm::cast<PrettyPrintOpInterface>(getOp().getDefiningOp()).prettyPrint(out, 0);
         out << " ";
         llvm::cast<PrettyPrintOpInterface>(getRvalue().getDefiningOp()).prettyPrint(out, 0);
-    }];
-
-    code checkDefinedVarBody = [{
-            llvm::cast<CheckDefinedVarOpInterface>(getLvalue().getDefiningOp()).checkDefinedVar(declared);
-            llvm::cast<CheckDefinedVarOpInterface>(getRvalue().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -1229,13 +1172,6 @@ def MyCast_ConditionalExpressionOp : MyCast_Op<"conditionalExpression"> {
         out << " : ";
         llvm::cast<PrettyPrintOpInterface>(getElsePart().getDefiningOp()).prettyPrint(out, 0);
     }];
-
-    code checkDefinedVarBody = [{
-            llvm::cast<CheckDefinedVarOpInterface>(getCond().getDefiningOp()).checkDefinedVar(declared);
-            llvm::cast<CheckDefinedVarOpInterface>(getThenPart().getDefiningOp()).checkDefinedVar(declared);
-            llvm::cast<CheckDefinedVarOpInterface>(getElsePart().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_LogicalOrExpressionOp : MyCast_Op<"logicalOrExpression"> {
@@ -1255,12 +1191,6 @@ def MyCast_LogicalOrExpressionOp : MyCast_Op<"logicalOrExpression"> {
             first = false;
             llvm::cast<PrettyPrintOpInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
         }
-    }];
-
-    code checkDefinedVarBody = [{
-        for (auto expr: getExpr())
-            llvm::cast<CheckDefinedVarOpInterface>(expr.getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -1282,12 +1212,6 @@ def MyCast_LogicalAndExpressionOp : MyCast_Op<"logicalAndExpression"> {
             llvm::cast<PrettyPrintOpInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
         }
     }];
-
-    code checkDefinedVarBody = [{
-        for (auto expr: getExpr())
-            llvm::cast<CheckDefinedVarOpInterface>(expr.getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_OrExpressionOp : MyCast_Op<"orExpression"> {
@@ -1307,12 +1231,6 @@ def MyCast_OrExpressionOp : MyCast_Op<"orExpression"> {
             first = false;
             llvm::cast<PrettyPrintOpInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
         }
-    }];
-
-    code checkDefinedVarBody = [{
-        for (auto expr: getExpr())
-            llvm::cast<CheckDefinedVarOpInterface>(expr.getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -1334,12 +1252,6 @@ def MyCast_XorExpressionOp : MyCast_Op<"xorExpression"> {
             llvm::cast<PrettyPrintOpInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
         }
     }];
-
-    code checkDefinedVarBody = [{
-        for (auto expr: getExpr())
-            llvm::cast<CheckDefinedVarOpInterface>(expr.getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_AndExpressionOp : MyCast_Op<"andExpression"> {
@@ -1359,12 +1271,6 @@ def MyCast_AndExpressionOp : MyCast_Op<"andExpression"> {
             first = false;
             llvm::cast<PrettyPrintOpInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
         }
-    }];
-
-    code checkDefinedVarBody = [{
-        for (auto expr: getExpr())
-            llvm::cast<CheckDefinedVarOpInterface>(expr.getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -1388,12 +1294,6 @@ def MyCast_EqualityExpressionOp : MyCast_Op<"equalityExpression"> {
         llvm::cast<PrettyPrintOpInterface>(getOp().getDefiningOp()).prettyPrint(out, 0);
         out << " ";
         llvm::cast<PrettyPrintOpInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
-    }];
-
-    code checkDefinedVarBody = [{
-            llvm::cast<CheckDefinedVarOpInterface>(getLval().getDefiningOp()).checkDefinedVar(declared);
-            llvm::cast<CheckDefinedVarOpInterface>(getRval().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -1431,10 +1331,11 @@ def MyCast_RelationalExpressionOp : MyCast_Op<"relationalExpression"> {
                          Type<MyCast_ShiftExpressionPred>:$rval);
     let results = (outs MyCast_RelationalExpressionType:$res);
     let assemblyFormat = [{
+        `(`
         `(` $lval `:` type($lval)`)`
-        `,` $op `:` type($op)`)`
-        `,` $rval  `:` type($rval)`)``)`
-        attr-dict
+        `,` `(` $op `:` type($op)`)`
+        `,` `(`$rval  `:` type($rval)`)`
+        `)` attr-dict
     }];
 
     code prettyPrintBody = [{
@@ -1445,12 +1346,6 @@ def MyCast_RelationalExpressionOp : MyCast_Op<"relationalExpression"> {
         llvm::cast<PrettyPrintOpInterface>(getOp().getDefiningOp()).prettyPrint(out, 0);
         out << " ";
         llvm::cast<PrettyPrintOpInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
-    }];
-
-    code checkDefinedVarBody = [{
-            llvm::cast<CheckDefinedVarOpInterface>(getLval().getDefiningOp()).checkDefinedVar(declared);
-            llvm::cast<CheckDefinedVarOpInterface>(getRval().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -1531,12 +1426,6 @@ def MyCast_ShiftExpressionOp : MyCast_Op<"shiftExpression"> {
         out << " ";
         llvm::cast<PrettyPrintOpInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
     }];
-
-    code checkDefinedVarBody = [{
-            llvm::cast<CheckDefinedVarOpInterface>(getLval().getDefiningOp()).checkDefinedVar(declared);
-            llvm::cast<CheckDefinedVarOpInterface>(getRval().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_LshiftOperatorOp : MyCast_Op<"lshiftOperator"> {
@@ -1588,12 +1477,6 @@ def MyCast_AdditiveExpressionOp : MyCast_Op<"additiveExpression"> {
         out << " ";
         llvm::cast<PrettyPrintOpInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
     }];
-
-    code checkDefinedVarBody = [{
-            llvm::cast<CheckDefinedVarOpInterface>(getLval().getDefiningOp()).checkDefinedVar(declared);
-            llvm::cast<CheckDefinedVarOpInterface>(getRval().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_PlusOperatorOp : MyCast_Op<"plusOperator"> {
@@ -1644,12 +1527,6 @@ def MyCast_MultiplicativeExpressionOp : MyCast_Op<"MultiplicativeExpression"> {
         llvm::cast<PrettyPrintOpInterface>(getOp().getDefiningOp()).prettyPrint(out, 0);
         out << " ";
         llvm::cast<PrettyPrintOpInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
-    }];
-
-    code checkDefinedVarBody = [{
-            llvm::cast<CheckDefinedVarOpInterface>(getLval().getDefiningOp()).checkDefinedVar(declared);
-            llvm::cast<CheckDefinedVarOpInterface>(getRval().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -1713,11 +1590,6 @@ def MyCast_CastExpressionOp : MyCast_Op<"castExpression"> {
         out << ") ";
         llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
     }];
-
-    code checkDefinedVarBody = [{
-            llvm::cast<CheckDefinedVarOpInterface>(getExpr().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_UnopExpressionOp : MyCast_Op<"unopExpression"> {
@@ -1735,11 +1607,6 @@ def MyCast_UnopExpressionOp : MyCast_Op<"unopExpression"> {
             out << "  ";
         llvm::cast<PrettyPrintOpInterface>(getOp().getDefiningOp()).prettyPrint(out, 0);
         llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
-    }];
-
-    code checkDefinedVarBody = [{
-            llvm::cast<CheckDefinedVarOpInterface>(getExpr().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -1875,12 +1742,6 @@ def MyCast_SizeofExpressionOp : MyCast_Op<"sizeofExpression", [AttrSizedOperandS
             llvm::cast<PrettyPrintOpInterface>(getTypeExpr().getDefiningOp()).prettyPrint(out, 0);
         out << ");";
     }];
-
-    code checkDefinedVarBody = [{
-        if (getExpr())
-            llvm::cast<CheckDefinedVarOpInterface>(getExpr().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_ArrayExpressionOp : MyCast_Op<"arrayExpression"> {
@@ -1900,12 +1761,6 @@ def MyCast_ArrayExpressionOp : MyCast_Op<"arrayExpression"> {
         out << "[";
         llvm::cast<PrettyPrintOpInterface>(getIndex().getDefiningOp()).prettyPrint(out, 0);
         out << "]";
-    }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getExpr().getDefiningOp()).checkDefinedVar(declared);
-        llvm::cast<CheckDefinedVarOpInterface>(getIndex().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -1933,12 +1788,12 @@ def MyCast_FunCallExpressionOp : MyCast_Op<"funCallExpression"> {
         out << ")";
     }];
 
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getExpr().getDefiningOp()).checkDefinedVar(declared);
-        for (auto arg: getArgs())
-           llvm::cast<CheckDefinedVarOpInterface>(arg.getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
+   code checkDefinedVarBody = [{
+       for (auto arg: getArgs()) {
+           declared = llvm::cast<CheckDefinedVarOpInterface>(arg.getDefiningOp()).checkDefinedVar(declared);
+       }
+       return declared;
+   }];
 }
 
 def MyCast_FieldExpressionOp : MyCast_Op<"fieldExpression"> {
@@ -1956,11 +1811,6 @@ def MyCast_FieldExpressionOp : MyCast_Op<"fieldExpression"> {
             out << "  ";
         llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
         out << "." << getField().getValue().data();
-    }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getExpr().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -1980,11 +1830,6 @@ def MyCast_PtrFieldExpressionOp : MyCast_Op<"ptrFieldExpression"> {
         llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
         out << "->" << getField().getValue().data();
     }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getExpr().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_PostincrExpressionOp : MyCast_Op<"postincrExpression"> {
@@ -2001,11 +1846,6 @@ def MyCast_PostincrExpressionOp : MyCast_Op<"postincrExpression"> {
         llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
         out << "++";
     }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getExpr().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_PostdecrExpressionOp : MyCast_Op<"postdecrExpression"> {
@@ -2021,11 +1861,6 @@ def MyCast_PostdecrExpressionOp : MyCast_Op<"postdecrExpression"> {
             out << "  ";
         llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
         out << "--";
-    }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getExpr().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -2098,11 +1933,6 @@ def MyCast_ParentExpressionOp : MyCast_Op<"parentExpression"> {
         llvm::cast<PrettyPrintOpInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
         out << ")";
     }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getExpr().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_StructureExpressionOp : MyCast_Op<"structureExpression"> {
@@ -2124,12 +1954,6 @@ def MyCast_StructureExpressionOp : MyCast_Op<"structureExpression"> {
             llvm::cast<PrettyPrintOpInterface>(val.getDefiningOp()).prettyPrint(out, 0);
         }
         out << "}";
-    }];
-
-    code checkDefinedVarBody = [{
-        for (auto val: getVal())
-            llvm::cast<CheckDefinedVarOpInterface>(val.getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 
@@ -2154,13 +1978,6 @@ def MyCast_GenericExpressionOp : MyCast_Op<"genericExpression"> {
         }
         out << ")";
     }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getExpr().getDefiningOp()).checkDefinedVar(declared);
-        for (auto case_: getCases())
-            llvm::cast<CheckDefinedVarOpInterface>(case_.getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_TypeGenericItemOp : MyCast_Op<"typeGenericItem"> {
@@ -2180,11 +1997,6 @@ def MyCast_TypeGenericItemOp : MyCast_Op<"typeGenericItem"> {
         out << ": ";
         llvm::cast<PrettyPrintOpInterface>(getBody().getDefiningOp()).prettyPrint(out, 0);
     }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getBody().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
-    }];
 }
 
 def MyCast_DefaultGenericItemOp : MyCast_Op<"defaultGenericItem"> {
@@ -2200,11 +2012,6 @@ def MyCast_DefaultGenericItemOp : MyCast_Op<"defaultGenericItem"> {
             out << "  ";
         out << "default: ";
         llvm::cast<PrettyPrintOpInterface>(getBody().getDefiningOp()).prettyPrint(out, 0);
-    }];
-
-    code checkDefinedVarBody = [{
-        llvm::cast<CheckDefinedVarOpInterface>(getBody().getDefiningOp()).checkDefinedVar(declared);
-        return declared;
     }];
 }
 #endif // MYCAST_OPS

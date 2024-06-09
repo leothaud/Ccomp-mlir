@@ -4,7 +4,7 @@ float floatVar = 3.14;
 
 union myUnion {
     int fieldA = 1, fieldB;
-    char fieldC;
+    char fieldC = variable;
 };
 
 enum myEnum {
@@ -16,5 +16,8 @@ typedef union myUnion myUnion_t;
 int main(int argc, char** argv) {
     int x = 17;
     int y;
-    return z;
+    for (int i = 3; i < 6; ++i)
+        printf(i);
+//    printf(i);
+    return y;
 }

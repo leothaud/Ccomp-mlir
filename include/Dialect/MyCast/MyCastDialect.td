@@ -50,6 +50,8 @@ class MyCast_Op<string mnemonic, list<Trait> traits = []> :
     }];
 
     code checkDefinedVarBody = [{
+        for (auto op: getOperation()->getOperands())
+            llvm::cast<CheckDefinedVarOpInterface>(op.getDefiningOp()).checkDefinedVar(declared);
         return declared;
     }];
 
@@ -60,6 +62,12 @@ class MyCast_Op<string mnemonic, list<Trait> traits = []> :
         [{Op::checkDefinedVar(llvm::SmallVector<std::string> declared) {
         }] # checkDefinedVarBody # [{
         }
+    }];
+
+    code typeCompatibleWithInt = [{false}];
+
+    let extraClassDeclaration = [{
+        static const bool compatibleWithInt = }] # typeCompatibleWithInt # [{;
     }];
 
     let extraClassDefinition = checkDefinedVarDefinition # prettyPrintDefinition # [{}];
