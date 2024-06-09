@@ -35,8 +35,7 @@ def MyCast_Dialect : Dialect {
 //===----------------------------------------------------------------------===//
 
 class MyCast_Op<string mnemonic, list<Trait> traits = []> :
-    Op<MyCast_Dialect, mnemonic, !listconcat(traits, [DeclareOpInterfaceMethods<PrettyPrintOpInterface, ["prettyPrint"]>,
-                                                      DeclareOpInterfaceMethods<CheckDefinedVarOpInterface, ["checkDefinedVar"]>])> {
+    Op<MyCast_Dialect, mnemonic, !listconcat(traits, [DeclareOpInterfaceMethods<MyCastInterface, ["prettyPrint", "checkDefinedVar"]>])> {
 
     code prettyPrintBody = [{}];
 
@@ -51,7 +50,7 @@ class MyCast_Op<string mnemonic, list<Trait> traits = []> :
 
     code checkDefinedVarBody = [{
         for (auto op: getOperation()->getOperands())
-            llvm::cast<CheckDefinedVarOpInterface>(op.getDefiningOp()).checkDefinedVar(declared);
+            llvm::cast<MyCastInterface>(op.getDefiningOp()).checkDefinedVar(declared);
         return declared;
     }];
 
