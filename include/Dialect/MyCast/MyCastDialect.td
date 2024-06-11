@@ -81,27 +81,13 @@ class MyCast_UnpureOp<string mnemonic, list<Trait> traits = []> :
         }
     }];
 
-    code replaceAliasBody = [{
-        for (auto op: getOperation()->getOperands())
-            llvm::cast<MyCastInterface>(op.getDefiningOp()).replaceAlias(aliases);
-    }];
-
-    code replaceAliasDefinition = [{
-        void ccomp::myCast::}] #
-            !strconcat(!toupper(!substr(mnemonic,0,1)),
-                !substr(mnemonic,1,!size(mnemonic))) #
-        [{Op::replaceAlias(llvm::StringMap<mlir::Operation*> &aliases) {
-        }] # replaceAliasBody # [{
-        }
-    }];
-
     code typeCompatibleWithInt = [{false}];
 
     let extraClassDeclaration = [{
         static const bool compatibleWithInt = }] # typeCompatibleWithInt # [{;
     }];
 
-    let extraClassDefinition = replaceAliasDefinition # checkDeclaredFunDefinition #
+    let extraClassDefinition = checkDeclaredFunDefinition #
                                checkDefinedVarDefinition # prettyPrintDefinition #
                                [{}];
 

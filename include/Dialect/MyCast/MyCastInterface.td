@@ -25,10 +25,6 @@ def MyCastInterface : OpInterface<"MyCastInterface"> {
     InterfaceMethod<
       "Operations must have a checkDefinedVar method.",
       "void", "checkDeclaredFun", (ins "llvm::SmallVector<std::string>&":$declared), [{}], [{ {} }]
-    >,
-    InterfaceMethod<
-      "Operations must have a replaceAlias method.",
-      "void", "replaceAlias", (ins "llvm::StringMap<mlir::Operation*>&":$aliases), [{}], [{ {} }]
     >
   ];
   let cppNamespace = "::ccomp::myCast";

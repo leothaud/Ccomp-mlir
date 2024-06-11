@@ -64,12 +64,21 @@ public:
   TypedefRemoverPattern(mlir::MLIRContext *context) : mlir::RewritePattern(AliasDefOp::getOperationName(),1,context) {}
 
   mlir::LogicalResult matchAndRewrite(mlir::Operation *op, mlir::PatternRewriter &rewriter) const override {
+    if (auto td = llvm::dyn_cast<AliasDefOp>(op)) {
+      for (auto &use: td->getUses()) {
+        auto *owner = use.getOwner();
 
-  rewriter.replaceAllUsesWith(op->getResults(), std::nullopt);
-//  rewriter.eraseOp(op);
+        rewriter.startOpModification(owner);
+        auto prog = llvm::cast<ProgramOp>(owner);
+        auto items = prog.getItemsMutable();
+        items.erase(use.getOperandNumber());
+        rewriter.finalizeOpModification(owner);
+      }
+      rewriter.eraseOp(td);
 
-
-    return mlir::success();
+      return mlir::success();
+    }
+    return mlir::failure();
   }
 };
 
@@ -89,9 +98,9 @@ struct ReplaceAliasPass
 public:
   void runOnOperation() override {
 
-//    (void)applyPattern<AliasRemoverPattern>(getOperation());
-    (void)applyPattern<TypedefRemoverPattern>(getOperation());
-
+    auto op = getOperation();
+    (void)applyPattern<AliasRemoverPattern>(op);
+    (void)applyPattern<TypedefRemoverPattern>(op);
 
   }
 };

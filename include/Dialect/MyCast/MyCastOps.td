@@ -318,11 +318,6 @@ def MyCast_AliasDefOp : MyCast_Op<"aliasDef"> {
         llvm::cast<MyCastInterface>(getBaseType().getDefiningOp()).prettyPrint(out, 0);
         out << " " << getName().getValue().data() << ";";
     }];
-
-    code replaceAliasBody = [{
-        llvm::cast<MyCastInterface>(getBaseType().getDefiningOp()).replaceAlias(aliases);
-        aliases[getName().getValue().data()] = getBaseType().getDefiningOp();
-    }];
 }
 
 def MyCast_LabeledStatementOp : MyCast_Op<"labeledStatement"> {
@@ -985,16 +980,6 @@ def MyCast_AliasTypeOp : MyCast_Op<"aliasType"> {
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << getName().getValue().data();
-    }];
-
-    code replaceAliasBody = [{
-        std::string typeName = getName().getValue().data();
-        if (!aliases.contains(typeName)) {
-            llvm::errs() << "Error: Undefined type " << typeName << "\n";
-            exit(1);
-        }
-        auto baseType = aliases[typeName];
-        replaceAllUsesWith(baseType->getResult(0));
     }];
 }
 
