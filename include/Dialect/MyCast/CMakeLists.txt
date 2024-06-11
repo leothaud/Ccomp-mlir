@@ -1,4 +1,16 @@
-add_mlir_dialect(MyCastOps myCast)
+set(LLVM_TARGET_DEFINITIONS MyCastOps.td)
+  mlir_tablegen(MyCastOps.h.inc -gen-op-decls)
+  mlir_tablegen(MyCastOps.cpp.inc -gen-op-defs)
+  mlir_tablegen(MyCastOpsTypes.h.inc -gen-typedef-decls -typedefs-dialect=myCast)
+  mlir_tablegen(MyCastOpsTypes.cpp.inc -gen-typedef-defs -typedefs-dialect=myCast)
+  mlir_tablegen(MyCastAttr.h.inc -gen-attrdef-decls -attrdefs-dialect=myCast)
+  mlir_tablegen(MyCastAttr.cpp.inc -gen-attrdef-defs -attrdefs-dialect=myCast)
+  mlir_tablegen(MyCastOpsDialect.h.inc -gen-dialect-decls -dialect=myCast)
+  mlir_tablegen(MyCastOpsDialect.cpp.inc -gen-dialect-defs -dialect=myCast)
+  add_public_tablegen_target(MLIRMyCastOpsIncGen)
+  add_dependencies(mlir-headers MLIRMyCastOpsIncGen)
+
+
 add_mlir_interface(MyCastInterface)
 add_mlir_doc(MyCastDialect MyCastDialect MyCast/ -gen-dialect-doc)
 add_mlir_doc(MyCastOps MyCastOps MyCast/ -gen-op-doc)

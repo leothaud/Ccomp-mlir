@@ -20,18 +20,18 @@
 namespace ccomp {
 namespace myCast {
 
-struct CheckDefinedVarPass
-    : public impl::CheckDefinedVarPassBase<CheckDefinedVarPass> {
+struct CheckDeclaredFunPass
+    : public impl::CheckDeclaredFunPassBase<CheckDeclaredFunPass> {
 public:
   void runOnOperation() override {
     llvm::SmallVector<std::string> declared;
-    this->getOperation().checkDefinedVar(declared);
+    this->getOperation().checkDeclaredFun(declared);
   }
 };
 
 std::unique_ptr<::mlir::OperationPass<ccomp::myCast::ProgramOp>>
-createCheckDefinedVarPass() {
-  return std::make_unique<ccomp::myCast::CheckDefinedVarPass>();
+createCheckDeclaredFunPass() {
+  return std::make_unique<ccomp::myCast::CheckDeclaredFunPass>();
 }
 
 } // namespace myCast

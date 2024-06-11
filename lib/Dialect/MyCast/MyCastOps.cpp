@@ -7,6 +7,7 @@
 //
 //===------------- Copyright 2024 Dylan Leothaud --------------------------===//
 
+#include "llvm/ADT/StringMap.h"
 #include "Dialect/MyCast/MyCastOps.h"
 #include "Dialect/MyCast/MyCastDialect.h"
 #include "mlir/IR/OpImplementation.h"

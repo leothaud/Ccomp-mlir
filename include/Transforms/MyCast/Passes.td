@@ -30,4 +30,16 @@ def CheckDefinedVarPass : Pass<"check-defined-var", "ccomp::myCast::ProgramOp"> 
   let dependentDialects = ["ccomp::myCast::MyCastDialect"];
 }
 
+def CheckDeclaredFunPass : Pass<"check-declared-fun", "ccomp::myCast::ProgramOp"> {
+  let summary = "check if every used function has been declared.";
+  let constructor = "ccomp::myCast::createCheckDeclaredFunPass()";
+  let dependentDialects = ["ccomp::myCast::MyCastDialect"];
+}
+
+def ReplaceAliasPass : Pass<"replace-alias", "ccomp::myCast::ProgramOp"> {
+  let summary = "replace every alias with corresponding type.";
+  let constructor = "ccomp::myCast::createReplaceAliasPass()";
+  let dependentDialects = ["ccomp::myCast::MyCastDialect"];
+}
+
 #endif // MYCAST_PASSES_TD

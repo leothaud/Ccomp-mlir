@@ -13,6 +13,7 @@
 
 include "mlir/IR/OpBase.td"
 include "Dialect/MyCast/MyCastInterface.td"
+include "mlir/Interfaces/SideEffectInterfaces.td"
 
 //===----------------------------------------------------------------------===//
 // MyCast dialect definition.
@@ -28,14 +29,17 @@ def MyCast_Dialect : Dialect {
     }];
     let cppNamespace = "::ccomp::myCast";
     let useDefaultTypePrinterParser = 1;
+    let useDefaultAttributePrinterParser = 1;
 }
 
 //===----------------------------------------------------------------------===//
 // Base MyCast operation definition.
 //===----------------------------------------------------------------------===//
 
-class MyCast_Op<string mnemonic, list<Trait> traits = []> :
-    Op<MyCast_Dialect, mnemonic, !listconcat(traits, [DeclareOpInterfaceMethods<MyCastInterface, ["prettyPrint", "checkDefinedVar"]>])> {
+class MyCast_UnpureOp<string mnemonic, list<Trait> traits = []> :
+    Op<MyCast_Dialect, mnemonic, !listconcat(traits, [DeclareOpInterfaceMethods<MyCastInterface,
+            ["prettyPrint", "checkDefinedVar", "checkDeclaredFun", "replaceAlias"]>]
+            )> {
 
     code prettyPrintBody = [{}];
 
@@ -58,8 +62,36 @@ class MyCast_Op<string mnemonic, list<Trait> traits = []> :
         llvm::SmallVector<std::string> ccomp::myCast::}] #
             !strconcat(!toupper(!substr(mnemonic,0,1)),
                 !substr(mnemonic,1,!size(mnemonic))) #
-        [{Op::checkDefinedVar(llvm::SmallVector<std::string> declared) {
+        [{Op::checkDefinedVar(llvm::SmallVector<std::string> &declared) {
         }] # checkDefinedVarBody # [{
+        }
+    }];
+
+    code checkDeclaredFunBody = [{
+        for (auto op: getOperation()->getOperands())
+            llvm::cast<MyCastInterface>(op.getDefiningOp()).checkDeclaredFun(declared);
+    }];
+
+    code checkDeclaredFunDefinition = [{
+        void ccomp::myCast::}] #
+            !strconcat(!toupper(!substr(mnemonic,0,1)),
+                !substr(mnemonic,1,!size(mnemonic))) #
+        [{Op::checkDeclaredFun(llvm::SmallVector<std::string> &declared) {
+        }] # checkDeclaredFunBody # [{
+        }
+    }];
+
+    code replaceAliasBody = [{
+        for (auto op: getOperation()->getOperands())
+            llvm::cast<MyCastInterface>(op.getDefiningOp()).replaceAlias(aliases);
+    }];
+
+    code replaceAliasDefinition = [{
+        void ccomp::myCast::}] #
+            !strconcat(!toupper(!substr(mnemonic,0,1)),
+                !substr(mnemonic,1,!size(mnemonic))) #
+        [{Op::replaceAlias(llvm::StringMap<mlir::Operation*> &aliases) {
+        }] # replaceAliasBody # [{
         }
     }];
 
@@ -69,8 +101,13 @@ class MyCast_Op<string mnemonic, list<Trait> traits = []> :
         static const bool compatibleWithInt = }] # typeCompatibleWithInt # [{;
     }];
 
-    let extraClassDefinition = checkDefinedVarDefinition # prettyPrintDefinition # [{}];
+    let extraClassDefinition = replaceAliasDefinition # checkDeclaredFunDefinition #
+                               checkDefinedVarDefinition # prettyPrintDefinition #
+                               [{}];
 
 }
+
+class MyCast_Op<string mnemonic, list<Trait> traits = []> :
+    MyCast_UnpureOp<mnemonic, !listconcat(traits, [Pure])> {}
 
 #endif // MYCAST_DIALECT

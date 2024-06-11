@@ -13,6 +13,7 @@
 
 include "Dialect/MyCast/MyCastDialect.td"
 include "Dialect/MyCast/MyCastOpsTypes.td"
+include "Dialect/MyCast/MyCastAttr.td"
 
 include "mlir/IR/OpBase.td"
 include "mlir/IR/BuiltinAttributes.td"
@@ -22,7 +23,7 @@ include "mlir/Bytecode/BytecodeOpInterface.td"
 
 
 
-def MyCast_ProgramOp : MyCast_Op<"program", [IsolatedFromAbove]> {
+def MyCast_ProgramOp : MyCast_UnpureOp<"program", [IsolatedFromAbove]> {
     let arguments = (ins Variadic<Type<MyCast_ProgramItemPred>>:$items);
     let results = (outs MyCast_ProgramType:$res);
     let assemblyFormat = [{
@@ -69,7 +70,8 @@ def MyCast_FunDefOp : MyCast_Op<"funDef"> {
     code checkDefinedVarBody = [{
         auto declaredInVar = llvm::SmallVector<std::string>(declared);
         declaredInVar = llvm::cast<MyCastInterface>(getProto().getDefiningOp()).checkDefinedVar(declaredInVar);
-        llvm::cast<MyCastInterface>(getBody().getDefiningOp()).checkDefinedVar(declaredInVar);
+        if (getBody())
+            llvm::cast<MyCastInterface>(getBody().getDefiningOp()).checkDefinedVar(declaredInVar);
         return declared;
     }];
 }
@@ -102,6 +104,10 @@ def MyCast_FunProtoOp : MyCast_Op<"funProto"> {
         for (auto arg: getArgs())
             declared = llvm::cast<MyCastInterface>(arg.getDefiningOp()).checkDefinedVar(declared);
         return declared;
+    }];
+    
+    code checkDeclaredFunBody = [{
+        declared.push_back(getName().getValue().data());
     }];
 }
 
@@ -170,7 +176,10 @@ def MyCast_BaseVarDeclOp : MyCast_Op<"baseVarDecl", [AttrSizedOperandSegments]> 
                          Optional<Type<MyCast_AssignmentExpressionPred>>:$value);
     let results = (outs MyCast_BaseVarDeclType:$res);
     let assemblyFormat = [{
-        `(` $name `,` (`(` $sizes^ `:` type($sizes)`)` )? `,` (`(` $value^ `:` type($value)`)`)? `)` 
+        `(` $name
+        `,` (`(` $sizes^ `:` type($sizes)`)` )?
+        `,` (`(` $value^ `:` type($value)`)`)?
+        `)` 
         attr-dict
     }];
 
@@ -308,6 +317,11 @@ def MyCast_AliasDefOp : MyCast_Op<"aliasDef"> {
         out << "typedef ";
         llvm::cast<MyCastInterface>(getBaseType().getDefiningOp()).prettyPrint(out, 0);
         out << " " << getName().getValue().data() << ";";
+    }];
+
+    code replaceAliasBody = [{
+        llvm::cast<MyCastInterface>(getBaseType().getDefiningOp()).replaceAlias(aliases);
+        aliases[getName().getValue().data()] = getBaseType().getDefiningOp();
     }];
 }
 
@@ -971,6 +985,16 @@ def MyCast_AliasTypeOp : MyCast_Op<"aliasType"> {
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << getName().getValue().data();
+    }];
+
+    code replaceAliasBody = [{
+        std::string typeName = getName().getValue().data();
+        if (!aliases.contains(typeName)) {
+            llvm::errs() << "Error: Undefined type " << typeName << "\n";
+            exit(1);
+        }
+        auto baseType = aliases[typeName];
+        replaceAllUsesWith(baseType->getResult(0));
     }];
 }
 
@@ -1786,6 +1810,16 @@ def MyCast_FunCallExpressionOp : MyCast_Op<"funCallExpression"> {
             llvm::cast<MyCastInterface>(arg.getDefiningOp()).prettyPrint(out, 0);
         }
         out << ")";
+    }];
+    
+    code checkDeclaredFunBody = [{
+        std::string funName = getFunName().getValue().data();
+        for (auto fun: declared) {
+            if (fun.compare(funName) == 0)
+                return;
+        }
+        llvm::errs() << "Error: function " << funName << " not declared.\n";
+        exit(1);
     }];
 }
 

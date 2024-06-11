@@ -11,11 +11,21 @@ enum myEnum {
     A, B, C
 };
 
+void printf(int i);
+
+typedef int mytype1;
+typedef mytype1 mytype2;
+typedef float mytype3;
+
 typedef union myUnion myUnion_t;
 
 int main(int argc, char** argv) {
     int x = 17;
     int y;
+    mytype1 x;
+    mytype2 y;
+    mytype3 z;
+
     char *s = "myString";
     for (int i = 3; i < 6; ++i)
         printf(i);

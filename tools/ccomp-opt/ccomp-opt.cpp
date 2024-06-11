@@ -25,6 +25,7 @@
 #include "Dialect/MyCcdfg/MyCcdfgOpsDialect.cpp.inc"
 #include "Dialect/initAllDialect.h"
 #include "Transforms/initAllPasses.h"
+#include "mlir/Debug/CLOptionsSetup.h"
 
 int main(int argc, char **argv) {
   mlir::registerAllPasses();
@@ -33,6 +34,7 @@ int main(int argc, char **argv) {
   mlir::registerAllDialects(registry);
   ccomp::registerAllDialects(registry);
   ccomp::registerAllPasses();
+  mlir::tracing::DebugConfig::registerCLOptions();
 
   return mlir::asMainReturnCode(
       mlir::MlirOptMain(argc, argv, "Ccomp optimizer driver\n", registry));

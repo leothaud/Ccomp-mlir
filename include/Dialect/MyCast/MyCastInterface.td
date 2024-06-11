@@ -15,12 +15,20 @@ include "mlir/IR/OpBase.td"
 def MyCastInterface : OpInterface<"MyCastInterface"> {
   let methods = [
     InterfaceMethod<
-      "An interface for operation that have a prettyPrint method.",
+      "Operations must have a prettyPrint method.",
       "void", "prettyPrint", (ins "::std::ostringstream &":$out, "int":$indent), [{}], [{ {} }]
     >,
     InterfaceMethod<
-      "An interface for operation that have a checkDefinedVar method.",
-      "llvm::SmallVector<std::string>", "checkDefinedVar", (ins "llvm::SmallVector<std::string>":$declared), [{}], [{ {} }]
+      "Operations must have a checkDefinedVar method.",
+      "llvm::SmallVector<std::string>", "checkDefinedVar", (ins "llvm::SmallVector<std::string>&":$declared), [{}], [{ {} }]
+    >,
+    InterfaceMethod<
+      "Operations must have a checkDefinedVar method.",
+      "void", "checkDeclaredFun", (ins "llvm::SmallVector<std::string>&":$declared), [{}], [{ {} }]
+    >,
+    InterfaceMethod<
+      "Operations must have a replaceAlias method.",
+      "void", "replaceAlias", (ins "llvm::StringMap<mlir::Operation*>&":$aliases), [{}], [{ {} }]
     >
   ];
   let cppNamespace = "::ccomp::myCast";
