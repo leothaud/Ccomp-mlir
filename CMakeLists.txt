@@ -2,7 +2,7 @@
 # under Apache License v2.0 with LLVM Exceptions
 # from project mlir-standalone-template
 # https://github.com/jmgorius/mlir-standalone-template/
-# modification: project name, change subfolders
+# modification: project name, change subfolders, add antlr-compilation
 
 cmake_minimum_required(VERSION 3.13.4)
 
@@ -15,6 +15,7 @@ project(CComp LANGUAGES CXX C)
 set(CMAKE_C_COMPILER clang)
 set(CMAKE_CXX_COMPILER clang++)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(ANTLR4_ZIP_REPOSITORY "" CACHE STRING "path to the antlr zipped repository")
 
 set(CMAKE_CXX_STANDARD 17 CACHE STRING "C++ standard to conform to")
 find_package(MLIR REQUIRED CONFIG)
