@@ -13,22 +13,17 @@ enum myEnum {
 
 void printf(int i);
 
-typedef int mytype1;
+typedef char mytype1;
 typedef mytype1 mytype2;
 typedef float mytype3;
 
 typedef union myUnion myUnion_t;
 
 int main(int argc, char** argv) {
-    int x = 17;
-    int y;
-    mytype1 x;
-    mytype2 y;
-    mytype3 z;
-
+    mytype1 x = 17;
+    int y = 3 * x + 1;
     char *s = "myString";
     for (int i = 3; i < 6; ++i)
         printf(i);
-//    printf(i);
-    return y;
+    return _Generic(x, char: 3, int:y, default:4);
 }

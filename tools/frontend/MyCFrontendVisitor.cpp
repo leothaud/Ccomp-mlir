@@ -1714,7 +1714,7 @@ std::any MyCFrontendVisitor::visitGenericExpression(
   result.vars = "%" + std::to_string(getNextVarIndex());
   result.types = "!myCast.genericExpression";
   result.program = exprRes.program + casesRes.program + result.vars +
-                   " = myCast.genericExpession ((" + exprRes.vars + " : " +
+                   " = myCast.genericExpression ((" + exprRes.vars + " : " +
                    exprRes.types + "),(" + casesRes.vars + " : " +
                    casesRes.types + "))\n";
   return result;

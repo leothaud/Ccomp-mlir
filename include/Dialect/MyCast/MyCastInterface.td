@@ -25,6 +25,32 @@ def MyCastInterface : OpInterface<"MyCastInterface"> {
     InterfaceMethod<
       "Operations must have a checkDefinedVar method.",
       "void", "checkDeclaredFun", (ins "llvm::SmallVector<std::string>&":$declared), [{}], [{ {} }]
+    >,
+    InterfaceMethod<
+      "Operations must have a addType method.",
+      "mlir::LogicalResult", "addType", (ins "llvm::StringMap<mlir::Attribute> &":$globals,
+          "llvm::StringMap<mlir::Attribute> &":$locals, "FunctionMap &":$funMap,
+          "llvm::StringMap<llvm::StringMap<mlir::Attribute>> &":$fieldMap), [{}], [{ {} }]
+    >,
+    InterfaceMethod<
+      "Operations must have a getTypeAttr method.",
+      "mlir::Attribute", "getTypeAttr", (ins ), [{}], [{ {} }]
+    >,
+    InterfaceMethod<
+      "Operations must have a isConst method.",
+      "bool", "isConst", (ins ), [{}], [{ {} }]
+    >,
+    InterfaceMethod<
+      "Operations must have a isExtern method.",
+      "bool", "isExtern", (ins ), [{}], [{ {} }]
+    >,
+    InterfaceMethod<
+      "Operations must have a isVolatile method.",
+      "bool", "isVolatile", (ins ), [{}], [{ {} }]
+    >,
+    InterfaceMethod<
+      "Operations must have a isStatic method.",
+      "bool", "isStatic", (ins ), [{}], [{ {} }]
     >
   ];
   let cppNamespace = "::ccomp::myCast";

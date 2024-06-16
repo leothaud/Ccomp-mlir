@@ -2,7 +2,7 @@
 //    return 0;
 //}
 
-%returnType = myCast.intType { x=#myCast.int<false>, y= #myCast.float<true,3,7>, z=#myCast.ptr<3>}
+%returnType = myCast.intType { x=#myCast.int<false>, y= #myCast.float<true,3,7>, z=#myCast.ptr<#myCast.int<false>,3>}
 %returnValue = myCast.intExpression (0)
 %returnValue2 = myCast.intExpression (0)
 %return = myCast.returnStatement (%returnValue : !myCast.intExpression)

@@ -42,4 +42,22 @@ def ReplaceAliasPass : Pass<"replace-alias", "ccomp::myCast::ProgramOp"> {
   let dependentDialects = ["ccomp::myCast::MyCastDialect"];
 }
 
+def TypeAstPass : Pass<"type-ast", "ccomp::myCast::ProgramOp"> {
+  let summary = "add a type attribute to every AST node.";
+  let constructor = "ccomp::myCast::createTypeAstPass()";
+  let dependentDialects = ["ccomp::myCast::MyCastDialect"];
+}
+
+def ReplaceGenericPass : Pass<"replace-generic", "ccomp::myCast::ProgramOp"> {
+  let summary = "replace generic expression with corresponding expression.";
+  let constructor = "ccomp::myCast::createReplaceGenericPass()";
+  let dependentDialects = ["ccomp::myCast::MyCastDialect"];
+}
+
+def CompleteTypeAstPass : Pass<"complete-type-ast", "ccomp::myCast::ProgramOp"> {
+  let summary = "type myC ast and apply useful pass.";
+  let constructor = "ccomp::myCast::createCompleteTypeAstPass()";
+  let dependentDialects = ["ccomp::myCast::MyCastDialect"];
+}
+
 #endif // MYCAST_PASSES_TD

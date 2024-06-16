@@ -7,7 +7,6 @@
 //
 //===------------- Copyright 2024 Dylan Leothaud --------------------------===//
 
-
 #ifndef MYCAST_OPS
 #define MYCAST_OPS
 
@@ -21,43 +20,53 @@ include "mlir/Interfaces/InferTypeOpInterface.td"
 include "mlir/Interfaces/SideEffectInterfaces.td"
 include "mlir/Bytecode/BytecodeOpInterface.td"
 
-
-
 def MyCast_ProgramOp : MyCast_UnpureOp<"program", [IsolatedFromAbove]> {
-    let arguments = (ins Variadic<Type<MyCast_ProgramItemPred>>:$items);
-    let results = (outs MyCast_ProgramType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Variadic<Type<MyCast_ProgramItemPred>>:$items);
+  let results = (outs MyCast_ProgramType:$res);
+  let assemblyFormat = [{
         `(` ($items^ `:` type($items))? `)`
         attr-dict
     }];
 
-
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
             for (auto item: getItems()) {
                 llvm::cast<MyCastInterface>(item.getDefiningOp()).prettyPrint(out, indent);
                 out << "\n\n";
             }
     }];
 
-   code checkDefinedVarBody = [{
-       for (auto item: getItems()) {
-           declared = llvm::cast<MyCastInterface>(item.getDefiningOp()).checkDefinedVar(declared);
-       }
-       return declared;
+  code checkDefinedVarBody = [{
+    for (auto item: getItems()) {
+      declared = llvm::cast<MyCastInterface>(item.getDefiningOp()).checkDefinedVar(declared);
+    }
+    return declared;
+  }];
+
+  code addTypeBody = [{
+    for (auto item: getItems()) {
+      if (auto varDecl = llvm::dyn_cast<VarDeclOp>(item.getDefiningOp())) {
+        if (varDecl.addType(globals, globals, funMap, fieldMap).failed())
+          return mlir::failure();
+      } else {
+        if (llvm::cast<MyCastInterface>(item.getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+          return mlir::failure();
+      }
+    }
+    return mlir::success();
    }];
 }
 
 def MyCast_FunDefOp : MyCast_Op<"funDef"> {
-    let arguments = (ins Type<MyCast_FunProtoPred>:$proto,
-                         Optional<Type<MyCast_CompoundStatementPred>>:$body);
-    let results = (outs MyCast_FunDefType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_FunProtoPred>:$proto,
+      Optional<Type<MyCast_CompoundStatementPred>>:$body);
+  let results = (outs MyCast_FunDefType:$res);
+  let assemblyFormat = [{
         `(` `(` $proto `:` type($proto) `)`
         `,` (`(` $body^ `:` type($body)`)`)? `)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         llvm::cast<MyCastInterface>(getProto().getDefiningOp()).prettyPrint(out, indent);
             if (getBody()) {
             out << "\n";
@@ -67,26 +76,35 @@ def MyCast_FunDefOp : MyCast_Op<"funDef"> {
         }
     }];
 
-    code checkDefinedVarBody = [{
+  code checkDefinedVarBody = [{
         auto declaredInVar = llvm::SmallVector<std::string>(declared);
         declaredInVar = llvm::cast<MyCastInterface>(getProto().getDefiningOp()).checkDefinedVar(declaredInVar);
         if (getBody())
             llvm::cast<MyCastInterface>(getBody().getDefiningOp()).checkDefinedVar(declaredInVar);
         return declared;
     }];
+
+    code addTypeBody = [{
+      llvm::StringMap<mlir::Attribute> newLocals(locals);
+      if (llvm::cast<MyCastInterface>(getProto().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (getBody())
+        if (llvm::cast<MyCastInterface>(getBody().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap).failed())
+          return mlir::failure();
+      return mlir::success();
+    }];
 }
 
 def MyCast_FunProtoOp : MyCast_Op<"funProto"> {
-    let arguments = (ins Type<MyCast_TypePred>:$returnType,
-                         Builtin_StringAttr:$name,
-                         Variadic<Type<MyCast_ArgumentPred>>:$args);
-    let results = (outs MyCast_FunProtoType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_TypePred>:$returnType,
+      Builtin_StringAttr:$name, Variadic<Type<MyCast_ArgumentPred>>:$args);
+  let results = (outs MyCast_FunProtoType:$res);
+  let assemblyFormat = [{
         `(` `(`$returnType `:` type($returnType) `)` `,` $name `,` (`(`$args^ `:` type($args)`)`)? `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getReturnType().getDefiningOp()).prettyPrint(out, 0);
@@ -100,28 +118,40 @@ def MyCast_FunProtoOp : MyCast_Op<"funProto"> {
         out << ")";
     }];
 
-    code checkDefinedVarBody = [{
+  code checkDefinedVarBody = [{
         for (auto arg: getArgs())
             declared = llvm::cast<MyCastInterface>(arg.getDefiningOp()).checkDefinedVar(declared);
         return declared;
     }];
-    
-    code checkDeclaredFunBody = [{
+
+  code checkDeclaredFunBody = [{
         declared.push_back(getName().getValue().data());
     }];
+
+  code addTypeBody = [{
+    if (llvm::cast<MyCastInterface>(getReturnType().getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    std::string name = getName().getValue().data();
+    funMap.addFunction(name, llvm::cast<MyCastInterface>(getReturnType().getDefiningOp()).getTypeAttr());
+    for (auto arg: getArgs()) {
+      if (llvm::cast<MyCastInterface>(arg.getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      funMap.addArgument(name, llvm::cast<MyCastInterface>(arg.getDefiningOp()).getTypeAttr());
+    }
+    return mlir::success();
+  }];
 }
 
 def MyCast_ArgumentOp : MyCast_Op<"argument"> {
-    let arguments = (ins Type<MyCast_TypePred>:$argType,
-                         Builtin_StringAttr:$name,
-                         Variadic<Type<MyCast_ExpressionPred>>:$sizes);
-    let results = (outs MyCast_ArgumentType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_TypePred>:$argType, Builtin_StringAttr:$name,
+      Variadic<Type<MyCast_ExpressionPred>>:$sizes);
+  let results = (outs MyCast_ArgumentType:$res);
+  let assemblyFormat = [{
         `(` `(`$argType `:` type($argType) `)` `,` $name `,` (`(` $sizes^ `:`type($sizes) `)`)? `)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getArgType().getDefiningOp()).prettyPrint(out, 0);
@@ -133,27 +163,39 @@ def MyCast_ArgumentOp : MyCast_Op<"argument"> {
         }
     }];
 
-    code checkDefinedVarBody = [{
+  code checkDefinedVarBody = [{
         for (auto size: getSizes())
             llvm::cast<MyCastInterface>(size.getDefiningOp()).checkDefinedVar(declared);
         declared.push_back(getName().getValue().data());
         return declared;
     }];
+
+  code addTypeBody = [{
+    if (llvm::cast<MyCastInterface>(getArgType().getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    mlir::Attribute argAttr = llvm::cast<MyCastInterface>(getArgType().getDefiningOp()).getTypeAttr();
+    for (auto size: getSizes()) {
+      if (llvm::cast<MyCastInterface>(size.getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+    }
+    getOperation()->setAttr("myCastType", argAttr);
+    return mlir::success();
+  }];
 }
 
 def MyCast_VarDeclOp : MyCast_Op<"varDecl"> {
-    let arguments = (ins Type<MyCast_TypePred>:$argType,
-                         Variadic<Type<MyCast_BaseVarDeclPred>>:$decls);
-    let results = (outs MyCast_VarDeclType:$res);
-    let assemblyFormat = [{
-        `(` `(`$argType `:` type($argType) `)` `,` ( `(` $decls^ `:` type($decls) `)`)? `)` 
+  let arguments = (ins Type<MyCast_TypePred>:$varType,
+      Variadic<Type<MyCast_BaseVarDeclPred>>:$decls);
+  let results = (outs MyCast_VarDeclType:$res);
+  let assemblyFormat = [{
+        `(` `(`$varType `:` type($varType) `)` `,` ( `(` $decls^ `:` type($decls) `)`)? `)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
-        llvm::cast<MyCastInterface>(getArgType().getDefiningOp()).prettyPrint(out, 0);
+        llvm::cast<MyCastInterface>(getVarType().getDefiningOp()).prettyPrint(out, 0);
         bool first = true;
         for (auto decl: getDecls()) {
             out << (first ? " " : ", ");
@@ -163,19 +205,41 @@ def MyCast_VarDeclOp : MyCast_Op<"varDecl"> {
         out << ";";
     }];
 
-    code checkDefinedVarBody = [{
+  code checkDefinedVarBody = [{
         for (auto decl: getDecls())
             declared = llvm::cast<MyCastInterface>(decl.getDefiningOp()).checkDefinedVar(declared);
         return declared;
     }];
+
+    code addTypeBody = [{
+      if (llvm::cast<MyCastInterface>(getVarType().getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      auto varAttr = llvm::cast<MyCastInterface>(getVarType().getDefiningOp()).getTypeAttr();
+      for (auto decl: getDecls()) {
+        BaseVarDeclOp baseDecl = llvm::cast<BaseVarDeclOp>(decl.getDefiningOp());
+        decl.getDefiningOp()->setAttr("myCastType", varAttr);
+        for (auto size: baseDecl.getSizes()) {
+          if (llvm::cast<MyCastInterface>(size.getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+                return mlir::failure();
+        }
+        if (baseDecl.getValue())
+          if (llvm::cast<MyCastInterface>(baseDecl.getValue().getDefiningOp())
+                  .addType(globals, locals, funMap, fieldMap).failed())
+            return mlir::failure();
+        std::string varName = baseDecl.getName().getValue().data();
+        locals[varName] = varAttr;
+      }
+      return mlir::success();
+    }];
 }
 
-def MyCast_BaseVarDeclOp : MyCast_Op<"baseVarDecl", [AttrSizedOperandSegments]> {
-    let arguments = (ins Builtin_StringAttr:$name,
-                         Variadic<Type<MyCast_ExpressionPred>>:$sizes,
-                         Optional<Type<MyCast_AssignmentExpressionPred>>:$value);
-    let results = (outs MyCast_BaseVarDeclType:$res);
-    let assemblyFormat = [{
+def MyCast_BaseVarDeclOp
+    : MyCast_Op<"baseVarDecl", [AttrSizedOperandSegments]> {
+  let arguments = (ins Builtin_StringAttr:$name,
+      Variadic<Type<MyCast_ExpressionPred>>:$sizes,
+      Optional<Type<MyCast_AssignmentExpressionPred>>:$value);
+  let results = (outs MyCast_BaseVarDeclType:$res);
+  let assemblyFormat = [{
         `(` $name
         `,` (`(` $sizes^ `:` type($sizes)`)` )?
         `,` (`(` $value^ `:` type($value)`)`)?
@@ -183,8 +247,7 @@ def MyCast_BaseVarDeclOp : MyCast_Op<"baseVarDecl", [AttrSizedOperandSegments]> 
         attr-dict
     }];
 
-
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << getName().getValue().data();
@@ -199,7 +262,7 @@ def MyCast_BaseVarDeclOp : MyCast_Op<"baseVarDecl", [AttrSizedOperandSegments]> 
         }
     }];
 
-    code checkDefinedVarBody = [{
+  code checkDefinedVarBody = [{
         for (auto size: getSizes())
             llvm::cast<MyCastInterface>(size.getDefiningOp()).checkDefinedVar(declared);
         if (getValue())
@@ -210,15 +273,15 @@ def MyCast_BaseVarDeclOp : MyCast_Op<"baseVarDecl", [AttrSizedOperandSegments]> 
 }
 
 def MyCast_UnionDefOp : MyCast_Op<"unionDef"> {
-    let arguments = (ins Builtin_StringAttr:$name,
-                         Variadic<Type<MyCast_VarDeclPred>>:$decls);
-    let results = (outs MyCast_UnionDefType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_StringAttr:$name,
+      Variadic<Type<MyCast_VarDeclPred>>:$decls);
+  let results = (outs MyCast_UnionDefType:$res);
+  let assemblyFormat = [{
         `(` $name `,` (`(`$decls^ `:` type($decls) `)`)? `)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "union " << getName().getValue().data() << " {\n";
@@ -228,18 +291,28 @@ def MyCast_UnionDefOp : MyCast_Op<"unionDef"> {
         }
         out << "}";
     }];
+
+    code addTypeBody = [{
+        llvm::StringMap<mlir::Attribute> fields;
+        for (auto decl: getDecls())
+            if (llvm::cast<MyCastInterface>(decl.getDefiningOp()).addType(globals, fields, funMap, fieldMap).failed())
+                return mlir::failure();
+        std::string unionName = getName().getValue().data();
+        fieldMap[unionName] = fields;
+        return mlir::success();
+    }];
 }
 
 def MyCast_StructDefOp : MyCast_Op<"structDef"> {
-    let arguments = (ins Builtin_StringAttr:$name,
-                         Variadic<Type<MyCast_VarDeclPred>>:$decls);
-    let results = (outs MyCast_StructDefType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_StringAttr:$name,
+      Variadic<Type<MyCast_VarDeclPred>>:$decls);
+  let results = (outs MyCast_StructDefType:$res);
+  let assemblyFormat = [{
         `(` $name `,` (`(`$decls^ `:` type($decls) `)`)? `)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "struct " << getName().getValue().data() << " {\n";
@@ -249,18 +322,28 @@ def MyCast_StructDefOp : MyCast_Op<"structDef"> {
         }
         out << "}";
     }];
+
+    code addTypeBody = [{
+        llvm::StringMap<mlir::Attribute> fields;
+        for (auto decl: getDecls())
+            if (llvm::cast<MyCastInterface>(decl.getDefiningOp()).addType(globals, fields, funMap, fieldMap).failed())
+                return mlir::failure();
+        std::string structName = getName().getValue().data();
+        fieldMap[structName] = fields;
+        return mlir::success();
+    }];
 }
 
 def MyCast_EnumDefOp : MyCast_Op<"enumDef"> {
-    let arguments = (ins Builtin_StringAttr:$name,
-                         Variadic<Type<MyCast_EnumItemPred>>:$items);
-    let results = (outs MyCast_EnumDefType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_StringAttr:$name,
+      Variadic<Type<MyCast_EnumItemPred>>:$items);
+  let results = (outs MyCast_EnumDefType:$res);
+  let assemblyFormat = [{
         `(` $name `,` (`(`$items^ `:` type($items) `)`)? `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "enum " << getName().getValue().data() << " {\n";
@@ -277,19 +360,27 @@ def MyCast_EnumDefOp : MyCast_Op<"enumDef"> {
             out << "  ";
         out << "}";
     }];
+
+    code addTypeBody = [{
+        llvm::StringMap<mlir::Attribute> newLocals;
+        for (auto item: getItems())
+            if (llvm::cast<MyCastInterface>(item.getDefiningOp()).addType(globals, newLocals, funMap, fieldMap).failed())
+                return mlir::failure();
+        return mlir::success();
+    }];
 }
 
 def MyCast_EnumItemOp : MyCast_Op<"enumItem"> {
-    let arguments = (ins Builtin_StringAttr:$name,
-                         Optional<Type<MyCast_ConditionalExpressionPred>>:$value);
-    let results = (outs MyCast_EnumItemType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_StringAttr:$name,
+      Optional<Type<MyCast_ConditionalExpressionPred>>:$value);
+  let results = (outs MyCast_EnumItemType:$res);
+  let assemblyFormat = [{
         `(`
         $name `,` (`(` $value^ `:` type($value)`)`)?
         `)` attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << getName().getValue().data();
@@ -298,56 +389,73 @@ def MyCast_EnumItemOp : MyCast_Op<"enumItem"> {
             llvm::cast<MyCastInterface>(getValue().getDefiningOp()).prettyPrint(out, 0);
         }
     }];
+
+    code addTypeBody = [{
+        if (getValue())
+            if (llvm::cast<MyCastInterface>(getValue().getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+                return mlir::failure();
+        return mlir::success();
+    }];
 }
 
 def MyCast_AliasDefOp : MyCast_Op<"aliasDef"> {
-    let arguments = (ins Type<MyCast_TypePred>:$baseType,
-                         Builtin_StringAttr:$name);
-    let results = (outs MyCast_AliasDefType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_TypePred>:$baseType,
+      Builtin_StringAttr:$name);
+  let results = (outs MyCast_AliasDefType:$res);
+  let assemblyFormat = [{
         `(`
         `(` $baseType `:` type($baseType) `)`
         `,` $name
         `)` attr-dict
     }];
-    
-    code prettyPrintBody = [{
+
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "typedef ";
         llvm::cast<MyCastInterface>(getBaseType().getDefiningOp()).prettyPrint(out, 0);
         out << " " << getName().getValue().data() << ";";
     }];
+
+  code addTypeBody = [{
+    llvm::errs() << "Error: there should not be any alias definition left when typing ast.\n";
+    exit(1);
+  }];
 }
 
 def MyCast_LabeledStatementOp : MyCast_Op<"labeledStatement"> {
-    let arguments = (ins Builtin_StringAttr:$label,
-                         Type<MyCast_StatementPred>:$stmt);
-    let results = (outs MyCast_LabeledStatementType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_StringAttr:$label,
+      Type<MyCast_StatementPred>:$stmt);
+  let results = (outs MyCast_LabeledStatementType:$res);
+  let assemblyFormat = [{
         `(` $label `,` `(` $stmt `:` type($stmt) `)` `)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         out << getLabel().getValue().data() << ":";
         llvm::cast<MyCastInterface>(getStmt().getDefiningOp()).prettyPrint(out, indent);
     }];
 
-    code checkDefinedVarBody = [{
+  code checkDefinedVarBody = [{
         return llvm::cast<MyCastInterface>(getStmt().getDefiningOp()).checkDefinedVar(declared);
     }];
+
+  code addTypeBody = [{
+    auto stmtOp = llvm::cast<MyCastInterface>(getStmt().getDefiningOp());
+    return stmtOp.addType(globals, locals, funMap, fieldMap);
+  }];
 }
 
 def MyCast_CompoundStatementOp : MyCast_Op<"compoundStatement"> {
-    let arguments = (ins Variadic<Type<MyCast_StatementPred>>:$stmt);
-    let results = (outs MyCast_CompoundStatementType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Variadic<Type<MyCast_StatementPred>>:$stmt);
+  let results = (outs MyCast_CompoundStatementType:$res);
+  let assemblyFormat = [{
         `(` ($stmt^ `:` type($stmt))? `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "{\n";
@@ -360,58 +468,74 @@ def MyCast_CompoundStatementOp : MyCast_Op<"compoundStatement"> {
         out << "}\n";
     }];
 
-    code checkDefinedVarBody = [{
+  code checkDefinedVarBody = [{
         for (auto stmt: getStmt())
             declared = llvm::cast<MyCastInterface>(stmt.getDefiningOp()).checkDefinedVar(declared);
         return declared;
     }];
+
+  code addTypeBody = [{
+    for (auto stmt: getStmt()) {
+        if (llvm::cast<MyCastInterface>(stmt.getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+            return mlir::failure();
+    }
+    return mlir::success();
+  }];
 }
 
 def MyCast_VarDeclStatementOp : MyCast_Op<"varDeclStatement"> {
-    let arguments = (ins Type<MyCast_VarDeclPred>:$decl);
-    let results = (outs MyCast_VarDeclStatementType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_VarDeclPred>:$decl);
+  let results = (outs MyCast_VarDeclStatementType:$res);
+  let assemblyFormat = [{
         `(` $decl `:` type($decl) `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         llvm::cast<MyCastInterface>(getDecl().getDefiningOp()).prettyPrint(out, indent);
     }];
 
-    code checkDefinedVarBody = [{
+  code checkDefinedVarBody = [{
         return llvm::cast<MyCastInterface>(getDecl().getDefiningOp()).checkDefinedVar(declared);
     }];
+
+  code addTypeBody = [{
+    return llvm::cast<MyCastInterface>(getDecl().getDefiningOp()).addType(globals, locals, funMap, fieldMap);
+  }];
 }
 
 def MyCast_ExpressionStatementOp : MyCast_Op<"expressionStatement"> {
-    let arguments = (ins Optional<Type<MyCast_ExpressionPred>>:$value);
-    let results = (outs MyCast_ExpressionStatementType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Optional<Type<MyCast_ExpressionPred>>:$value);
+  let results = (outs MyCast_ExpressionStatementType:$res);
+  let assemblyFormat = [{
         `(` ($value^ `:` type($value))? `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
-        if (getValue())
-            llvm::cast<MyCastInterface>(getValue().getDefiningOp()).prettyPrint(out, indent);
-        out << ";\n";
-    }];
+  code prettyPrintBody = [{
+    if (getValue())
+      llvm::cast<MyCastInterface>(getValue().getDefiningOp()).prettyPrint(out, indent);
+    out << ";\n";
+  }];
+
+  code addTypeBody = [{
+    return llvm::cast<MyCastInterface>(getValue().getDefiningOp()).addType(globals, locals, funMap, fieldMap);
+  }];
 }
 
 def MyCast_IfStatementOp : MyCast_Op<"ifStatement"> {
-    let arguments = (ins Type<MyCast_ExpressionPred>:$cond,
-                         Type<MyCast_StatementPred>:$thenPart,
-                         Optional<Type<MyCast_StatementPred>>:$elsePart);
-    let results = (outs MyCast_IfStatementType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_ExpressionPred>:$cond,
+      Type<MyCast_StatementPred>:$thenPart,
+      Optional<Type<MyCast_StatementPred>>:$elsePart);
+  let results = (outs MyCast_IfStatementType:$res);
+  let assemblyFormat = [{
         `(` `(` $cond `:` type($cond) `)`
         `,` `(` $thenPart `:`type($thenPart) `)`
         `,` (`(` $elsePart^ `:` type($elsePart) `)`)? `)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "if (";
@@ -425,20 +549,34 @@ def MyCast_IfStatementOp : MyCast_Op<"ifStatement"> {
             out <<"else\n";
             llvm::cast<MyCastInterface>(getElsePart().getDefiningOp()).prettyPrint(out, indent+1);
         }
-    }];
+  }];
+  
+  code addTypeBody = [{
+    if (llvm::cast<MyCastInterface>(getCond().getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    auto newLocals = llvm::StringMap<mlir::Attribute>(locals);
+    if (llvm::cast<MyCastInterface>(getThenPart().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap).failed())
+      return mlir::failure();
+    newLocals = llvm::StringMap<mlir::Attribute>(locals);
+    if (getElsePart())
+      if (llvm::cast<MyCastInterface>(getElsePart().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap).failed())
+        return mlir::failure();
+    return mlir::success();
+  }];
+
 }
 
 def MyCast_SwitchStatementOp : MyCast_Op<"switchStatement"> {
-    let arguments = (ins Type<MyCast_ExpressionPred>:$cond,
-                         Variadic<Type<MyCast_SwitchItemPred>>:$items);
-    let results = (outs MyCast_SwitchStatementType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_ExpressionPred>:$cond,
+      Variadic<Type<MyCast_SwitchItemPred>>:$items);
+  let results = (outs MyCast_SwitchStatementType:$res);
+  let assemblyFormat = [{
         `(` `(` $cond `:` type($cond) `)`
         `,` (`(`$items^ `:` type($items)`)`)? `)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "switch (";
@@ -455,18 +593,29 @@ def MyCast_SwitchStatementOp : MyCast_Op<"switchStatement"> {
             out << "  ";
         out << "}";
     }];
+
+  code addTypeBody = [{
+    if (llvm::cast<MyCastInterface>(getCond().getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    for (auto item: getItems()) {
+      auto newLocals = llvm::StringMap<mlir::Attribute>(locals);
+      if (llvm::cast<MyCastInterface>(item.getDefiningOp()).addType(globals, newLocals, funMap, fieldMap).failed())
+        return mlir::failure();
+    }
+    return mlir::success();
+  }];
 }
 
 def MyCast_SwitchCaseItemOp : MyCast_Op<"switchCaseItem"> {
-    let arguments = (ins Type<MyCast_ExpressionPred>:$cond,
-                         Type<MyCast_StatementPred>:$body);
-    let results = (outs MyCast_SwitchCaseItemType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_ExpressionPred>:$cond,
+      Type<MyCast_StatementPred>:$body);
+  let results = (outs MyCast_SwitchCaseItemType:$res);
+  let assemblyFormat = [{
         `(` `(` $cond `:` type($cond) `)` `,` `(` $body `:` type($body) `)` `)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "case ";
@@ -475,35 +624,45 @@ def MyCast_SwitchCaseItemOp : MyCast_Op<"switchCaseItem"> {
         llvm::cast<MyCastInterface>(getBody().getDefiningOp()).prettyPrint(out, indent+1);
         out << "\n";
     }];
+
+  code addTypeBody = [{
+    if (llvm::cast<MyCastInterface>(getCond().getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    return llvm::cast<MyCastInterface>(getBody().getDefiningOp()).addType(globals, locals, funMap, fieldMap);
+  }];
 }
 
 def MyCast_SwitchDefaultItemOp : MyCast_Op<"switchDefaultItem"> {
-    let arguments = (ins Type<MyCast_StatementPred>:$body);
-    let results = (outs MyCast_SwitchDefaultItemType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_StatementPred>:$body);
+  let results = (outs MyCast_SwitchDefaultItemType:$res);
+  let assemblyFormat = [{
         `(` $body `:` type($body) `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "default:\n";
         llvm::cast<MyCastInterface>(getBody().getDefiningOp()).prettyPrint(out, indent+1);
         out << "\n";
     }];
+
+  code addTypeBody = [{
+    return llvm::cast<MyCastInterface>(getBody().getDefiningOp()).addType(globals, locals, funMap, fieldMap);
+  }];
 }
 
 def MyCast_WhileStatementOp : MyCast_Op<"whileStatement"> {
-    let arguments = (ins Type<MyCast_ExpressionPred>:$cond,
-                         Type<MyCast_StatementPred>:$body);
-    let results = (outs MyCast_WhileStatementType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_ExpressionPred>:$cond,
+      Type<MyCast_StatementPred>:$body);
+  let results = (outs MyCast_WhileStatementType:$res);
+  let assemblyFormat = [{
         `(` `(` $cond `:` type($cond) `)` `,` `(` $body `:` type($body) `)` `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "while (";
@@ -511,18 +670,25 @@ def MyCast_WhileStatementOp : MyCast_Op<"whileStatement"> {
         out << ")\n";
         llvm::cast<MyCastInterface>(getBody().getDefiningOp()).prettyPrint(out, indent+1);
     }];
+
+  code addTypeBody = [{
+    if (llvm::cast<MyCastInterface>(getCond().getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    auto newLocals = llvm::StringMap<mlir::Attribute>(locals);
+    return llvm::cast<MyCastInterface>(getBody().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap);
+  }];
 }
 
 def MyCast_DoWhileStatementOp : MyCast_Op<"doWhileStatement"> {
-    let arguments = (ins Type<MyCast_ExpressionPred>:$cond,
-                         Type<MyCast_StatementPred>:$body);
-    let results = (outs MyCast_DoWhileStatementType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_ExpressionPred>:$cond,
+      Type<MyCast_StatementPred>:$body);
+  let results = (outs MyCast_DoWhileStatementType:$res);
+  let assemblyFormat = [{
         `(` $cond `:` type($cond) `)` `,` `(` $body `:` type($body) `)` `)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "do\n";
@@ -533,15 +699,23 @@ def MyCast_DoWhileStatementOp : MyCast_Op<"doWhileStatement"> {
         llvm::cast<MyCastInterface>(getCond().getDefiningOp()).prettyPrint(out, 0);
         out << ");\n";
     }];
+
+  code addTypeBody = [{
+    if (llvm::cast<MyCastInterface>(getCond().getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    auto newLocals = llvm::StringMap<mlir::Attribute>(locals);
+    return llvm::cast<MyCastInterface>(getBody().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap);
+  }];
 }
 
-def MyCast_ForStatementOp : MyCast_Op<"forStatement", [AttrSizedOperandSegments]> {
-    let arguments = (ins Optional<Type<MyCast_VarDeclPred>>:$init,
-                         Optional<Type<MyCast_ExpressionPred>>:$cond,
-                         Optional<Type<MyCast_ExpressionPred>>:$step,
-                         Type<MyCast_StatementPred>:$body);
-    let results = (outs MyCast_ForStatementType:$res);
-    let assemblyFormat = [{
+def MyCast_ForStatementOp
+    : MyCast_Op<"forStatement", [AttrSizedOperandSegments]> {
+  let arguments = (ins Optional<Type<MyCast_VarDeclPred>>:$init,
+      Optional<Type<MyCast_ExpressionPred>>:$cond,
+      Optional<Type<MyCast_ExpressionPred>>:$step,
+      Type<MyCast_StatementPred>:$body);
+  let results = (outs MyCast_ForStatementType:$res);
+  let assemblyFormat = [{
         `(` (`(` $init^ `:` type($init)`)`)?
         `,` (`(` $cond^ `:` type($cond)`)`)?
         `,` (`(` $step^ `:` type($step)`)`)?
@@ -549,7 +723,7 @@ def MyCast_ForStatementOp : MyCast_Op<"forStatement", [AttrSizedOperandSegments]
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "for (";
@@ -566,7 +740,7 @@ def MyCast_ForStatementOp : MyCast_Op<"forStatement", [AttrSizedOperandSegments]
         llvm::cast<MyCastInterface>(getBody().getDefiningOp()).prettyPrint(out, indent+1);
     }];
 
-    code checkDefinedVarBody = [{
+  code checkDefinedVarBody = [{
         auto declaredInFor = llvm::SmallVector<std::string>(declared);
         if (getInit())
             declaredInFor = llvm::cast<MyCastInterface>(getInit().getDefiningOp()).checkDefinedVar(declaredInFor);
@@ -577,16 +751,30 @@ def MyCast_ForStatementOp : MyCast_Op<"forStatement", [AttrSizedOperandSegments]
         llvm::cast<MyCastInterface>(getBody().getDefiningOp()).checkDefinedVar(declaredInFor);
         return declared;
     }];
+
+  code addTypeBody = [{
+    auto newLocals = llvm::StringMap<mlir::Attribute>(locals);
+    if (getInit())
+      if (llvm::cast<MyCastInterface>(getInit().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap).failed())
+        return mlir::failure();
+    if (getCond())
+      if (llvm::cast<MyCastInterface>(getCond().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap).failed())
+        return mlir::failure();
+    if (getStep())
+      if (llvm::cast<MyCastInterface>(getStep().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap).failed())
+        return mlir::failure();
+    return llvm::cast<MyCastInterface>(getBody().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap);
+  }];
 }
 
 def MyCast_GotoStatementOp : MyCast_Op<"gotoStatement"> {
-    let arguments = (ins Builtin_StringAttr:$label);
-    let results = (outs MyCast_GotoStatementType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_StringAttr:$label);
+  let results = (outs MyCast_GotoStatementType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "goto " << getLabel().getValue().data() << ";";
@@ -594,13 +782,13 @@ def MyCast_GotoStatementOp : MyCast_Op<"gotoStatement"> {
 }
 
 def MyCast_ContinueStatementOp : MyCast_Op<"continueStatement"> {
-    let arguments = (ins );
-    let results = (outs MyCast_ContinueStatementType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_ContinueStatementType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "continue;";
@@ -608,13 +796,13 @@ def MyCast_ContinueStatementOp : MyCast_Op<"continueStatement"> {
 }
 
 def MyCast_BreakStatementOp : MyCast_Op<"breakStatement"> {
-    let arguments = (ins );
-    let results = (outs MyCast_BreakStatementType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_BreakStatementType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "break;";
@@ -622,14 +810,14 @@ def MyCast_BreakStatementOp : MyCast_Op<"breakStatement"> {
 }
 
 def MyCast_ReturnStatementOp : MyCast_Op<"returnStatement"> {
-    let arguments = (ins Optional<Type<MyCast_ExpressionPred>>:$value);
-    let results = (outs MyCast_ReturnStatementType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Optional<Type<MyCast_ExpressionPred>>:$value);
+  let results = (outs MyCast_ReturnStatementType:$res);
+  let assemblyFormat = [{
         `(` $value `:` type($value) `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "return";
@@ -639,21 +827,24 @@ def MyCast_ReturnStatementOp : MyCast_Op<"returnStatement"> {
         }
         out << ";";
     }];
+
+  code addTypeBody = [{
+    return llvm::cast<MyCastInterface>(getValue().getDefiningOp()).addType(globals, locals, funMap, fieldMap);
+  }];
 }
 
 def MyCast_TypeOp : MyCast_Op<"type"> {
-    let arguments = (ins Variadic<Type<MyCast_TypeModifierPred>>:$modifiers,
-                         Type<MyCast_BaseTypePred>:$bt,
-                         Builtin_IntegerAttr:$stars);
-    let results = (outs MyCast_TypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Variadic<Type<MyCast_TypeModifierPred>>:$modifiers,
+      Type<MyCast_BaseTypePred>:$bt, Builtin_IntegerAttr:$stars);
+  let results = (outs MyCast_TypeType:$res);
+  let assemblyFormat = [{
         `(` (`(` $modifiers^ `:` type($modifiers) `)`)?
         `,` `(` $bt `:` type($bt) `)`
         `,` $stars `)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         for (auto modifier: getModifiers())
@@ -662,340 +853,446 @@ def MyCast_TypeOp : MyCast_Op<"type"> {
         for (uint64_t i = 0; i < *getStars().getValue().getRawData(); ++i)
             out << "*";
     }];
+
+  code addTypeBody = [{
+    auto bt = llvm::cast<MyCastInterface>(getBt().getDefiningOp());
+    if (bt.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    auto attr = bt.getTypeAttr();
+    for (uint64_t i = 0; i < *getStars().getValue().getRawData(); ++i)
+      attr = ccomp::myCast::PtrAttr::get(getContext(), attr, 0);
+    getOperation()->setAttr("myCastType", attr);
+    return mlir::success();
+  }];
+  
+  code isStatic = [{
+    for (auto modifier: getModifiers())
+      if (llvm::cast<MyCastInterface>(modifier.getDefiningOp()).isStatic())
+        return true;
+    return false;
+  }];
+  
+  code isExtern = [{
+    for (auto modifier: getModifiers())
+      if (llvm::cast<MyCastInterface>(modifier.getDefiningOp()).isExtern())
+        return true;
+    return false;
+  }];
+  
+  code isConst = [{
+    for (auto modifier: getModifiers())
+      if (llvm::cast<MyCastInterface>(modifier.getDefiningOp()).isConst())
+        return true;
+    return false;
+  }];
+  
+  code isVolatile = [{
+    for (auto modifier: getModifiers())
+      if (llvm::cast<MyCastInterface>(modifier.getDefiningOp()).isVolatile())
+        return true;
+    return false;
+  }];
 }
 
 def MyCast_StaticTypeModifierOp : MyCast_Op<"staticTypeModifier"> {
-    let arguments = (ins );
-    let results = (outs MyCast_StaticTypeModifierType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_StaticTypeModifierType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "static";
     }];
+  code isStatic = [{return true;}];
 }
 
 def MyCast_ConstTypeModifierOp : MyCast_Op<"constTypeModifier"> {
-    let arguments = (ins );
-    let results = (outs MyCast_ConstTypeModifierType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_ConstTypeModifierType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "const";
     }];
+  code isConst = [{return true;}];
 }
 
 def MyCast_ExternTypeModifierOp : MyCast_Op<"externTypeModifier"> {
-    let arguments = (ins );
-    let results = (outs MyCast_ExternTypeModifierType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_ExternTypeModifierType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "extern";
     }];
+  code isExtern = [{return true;}];
 }
 
 def MyCast_VolatileTypeModifierOp : MyCast_Op<"volatileTypeModifier"> {
-    let arguments = (ins );
-    let results = (outs MyCast_VolatileTypeModifierType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_VolatileTypeModifierType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "volatile";
     }];
+  code isVolatile = [{return true;}];
 }
 
 def MyCast_VoidTypeOp : MyCast_Op<"voidType"> {
-    let arguments = (ins );
-    let results = (outs MyCast_VoidTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_VoidTypeType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "void";
     }];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::VoidAttr::get(getContext()));
+    return mlir::success();
+  }];
 }
 
 def MyCast_UnsignedLongLongTypeOp : MyCast_Op<"unsignedLongLongType"> {
-    let arguments = (ins );
-    let results = (outs MyCast_UnsignedLongLongTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_UnsignedLongLongTypeType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "unsigned long long";
     }];
-
-    code typeCompatibleWithInt = [{true}];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), false, 0));
+    return mlir::success();
+  }];
 }
 
 def MyCast_UnsignedLongTypeOp : MyCast_Op<"unsignedLongType"> {
-    let arguments = (ins );
-    let results = (outs MyCast_UnsignedLongTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_UnsignedLongTypeType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "unsigned long";
     }];
-
-    code typeCompatibleWithInt = [{true}];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), false, 64));
+    return mlir::success();
+  }];
 }
 
 def MyCast_UnsignedShortTypeOp : MyCast_Op<"UnsignedShortType"> {
-    let arguments = (ins );
-    let results = (outs MyCast_UnsignedShortTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_UnsignedShortTypeType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "unsigned short";
     }];
-
-    code typeCompatibleWithInt = [{true}];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), false, 16));
+    return mlir::success();
+  }];
 }
 
 def MyCast_UnsignedCharTypeOp : MyCast_Op<"UnsignedCharType"> {
-    let arguments = (ins );
-    let results = (outs MyCast_UnsignedCharTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_UnsignedCharTypeType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "unsigned char";
     }];
-
-    code typeCompatibleWithInt = [{true}];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), false, 8));
+    return mlir::success();
+  }];
 }
 
 def MyCast_UnsignedIntTypeOp : MyCast_Op<"UnsignedIntType"> {
-    let arguments = (ins );
-    let results = (outs MyCast_UnsignedIntTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_UnsignedIntTypeType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "unsigned int";
     }];
-
-    code typeCompatibleWithInt = [{true}];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), false, 32));
+    return mlir::success();
+  }];
 }
 
-
 def MyCast_LongLongTypeOp : MyCast_Op<"longLongType"> {
-    let arguments = (ins );
-    let results = (outs MyCast_LongLongTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_LongLongTypeType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "long long";
     }];
-
-    code typeCompatibleWithInt = [{true}];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), true, 0));
+    return mlir::success();
+  }];
 }
 
 def MyCast_LongTypeOp : MyCast_Op<"longType"> {
-    let arguments = (ins );
-    let results = (outs MyCast_LongTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_LongTypeType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "long";
     }];
-
-    code typeCompatibleWithInt = [{true}];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), true, 64));
+    return mlir::success();
+  }];
 }
 
 def MyCast_ShortTypeOp : MyCast_Op<"shortType"> {
-    let arguments = (ins );
-    let results = (outs MyCast_ShortTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_ShortTypeType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "short";
     }];
-
-    code typeCompatibleWithInt = [{true}];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), true, 16));
+    return mlir::success();
+  }];
 }
 
 def MyCast_CharTypeOp : MyCast_Op<"charType"> {
-    let arguments = (ins );
-    let results = (outs MyCast_CharTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_CharTypeType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "char";
     }];
-
-    code typeCompatibleWithInt = [{true}];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), true, 8));
+    return mlir::success();
+  }];
 }
 
 def MyCast_IntTypeOp : MyCast_Op<"intType"> {
-    let arguments = (ins );
-    let results = (outs MyCast_IntTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_IntTypeType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "int";
     }];
-
-    code typeCompatibleWithInt = [{true}];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), true, 32));
+    return mlir::success();
+  }];
 }
 
 def MyCast_FloatTypeOp : MyCast_Op<"floatType"> {
-    let arguments = (ins );
-    let results = (outs MyCast_FloatTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_FloatTypeType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "float";
     }];
-
-    code typeCompatibleWithInt = [{true}];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::FloatAttr::get(getContext(), true, 8, 23));
+    return mlir::success();
+  }];
 }
 
 def MyCast_DoubleTypeOp : MyCast_Op<"doubleType"> {
-    let arguments = (ins );
-    let results = (outs MyCast_DoubleTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_DoubleTypeType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "double";
     }];
-
-    code typeCompatibleWithInt = [{true}];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::FloatAttr::get(getContext(), true, 11, 52));
+    return mlir::success();
+  }];
 }
 
 def MyCast_EnumTypeOp : MyCast_Op<"enumType"> {
-    let arguments = (ins Builtin_StringAttr:$name);
-    let results = (outs MyCast_EnumTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_StringAttr:$name);
+  let results = (outs MyCast_EnumTypeType:$res);
+  let assemblyFormat = [{
         `(` $name `)` attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "enum " << getName().getValue().data();
     }];
+  
+  code addTypeBody = [{
+    auto nameAttr = mlir::StringAttr::get(getContext(), getName().getValue().data());
+    getOperation()->setAttr("myCastType", ccomp::myCast::EnumAttr::get(getContext(), nameAttr));
+    return mlir::success();
+  }];
 }
 
 def MyCast_StructTypeOp : MyCast_Op<"structType"> {
-    let arguments = (ins Builtin_StringAttr:$name);
-    let results = (outs MyCast_StructTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_StringAttr:$name);
+  let results = (outs MyCast_StructTypeType:$res);
+  let assemblyFormat = [{
         `(` $name `)` attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "struct " << getName().getValue().data();
     }];
+  
+  code addTypeBody = [{
+    auto nameAttr = mlir::StringAttr::get(getContext(), getName().getValue().data());
+    getOperation()->setAttr("myCastType", ccomp::myCast::StructAttr::get(getContext(), nameAttr));
+    return mlir::success();
+  }];
 }
 
 def MyCast_UnionTypeOp : MyCast_Op<"unionType"> {
-    let arguments = (ins Builtin_StringAttr:$name);
-    let results = (outs MyCast_UnionTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_StringAttr:$name);
+  let results = (outs MyCast_UnionTypeType:$res);
+  let assemblyFormat = [{
         `(` $name `)` attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "union " << getName().getValue().data();
     }];
+  
+  code addTypeBody = [{
+    auto nameAttr = mlir::StringAttr::get(getContext(), getName().getValue().data());
+    getOperation()->setAttr("myCastType", ccomp::myCast::UnionAttr::get(getContext(), nameAttr));
+    return mlir::success();
+  }];
 }
 
 def MyCast_AliasTypeOp : MyCast_Op<"aliasType"> {
-    let arguments = (ins Builtin_StringAttr:$name);
-    let results = (outs MyCast_AliasTypeType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_StringAttr:$name);
+  let results = (outs MyCast_AliasTypeType:$res);
+  let assemblyFormat = [{
         `(` $name `)` attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << getName().getValue().data();
     }];
+
+  code addTypeBody = [{
+    llvm::errs() << "Error: there should not be any alias left when typing ast.\n";
+    exit(1);
+  }];
 }
 
 def MyCast_AssignmentExpressionOp : MyCast_Op<"assignmentExpression"> {
-    let arguments = (ins Type<MyCast_UnaryExpressionPred>:$lvalue,
-                         Type<MyCast_AssignOperatorPred>:$op,
-                         Type<MyCast_AssignmentExpressionPred>:$rvalue);
-    let results = (outs MyCast_AssignmentExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_UnaryExpressionPred>:$lvalue,
+      Type<MyCast_AssignOperatorPred>:$op,
+      Type<MyCast_AssignmentExpressionPred>:$rvalue);
+  let results = (outs MyCast_AssignmentExpressionType:$res);
+  let assemblyFormat = [{
         `(` `(` $lvalue `:` type($lvalue) `)`
         `,` `(` $op `:` type($op) `)`
         `,` `(` $rvalue `:` type($rvalue) `)` `)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getLvalue().getDefiningOp()).prettyPrint(out, 0);
@@ -1004,16 +1301,31 @@ def MyCast_AssignmentExpressionOp : MyCast_Op<"assignmentExpression"> {
         out << " ";
         llvm::cast<MyCastInterface>(getRvalue().getDefiningOp()).prettyPrint(out, 0);
     }];
+  
+  code addTypeBody = [{
+    auto lval = llvm::cast<MyCastInterface>(getLvalue().getDefiningOp());
+    auto rval = llvm::cast<MyCastInterface>(getRvalue().getDefiningOp());
+    if (lval.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    if (rval.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    if (!areCompatible(lval.getTypeAttr(), rval.getTypeAttr())) {
+      llvm::errs() << "Error: assignmentExpression unwell typed.\n";
+      getOperation()->dump();
+      exit(1);
+    }
+    return mlir::success();
+  }];
 }
 
 def MyCast_EqOpOp : MyCast_Op<"eqOp"> {
-    let arguments = (ins );
-    let results = (outs MyCast_EqOpType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_EqOpType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "=";
@@ -1021,13 +1333,13 @@ def MyCast_EqOpOp : MyCast_Op<"eqOp"> {
 }
 
 def MyCast_StarEqOpOp : MyCast_Op<"starEqOp"> {
-    let arguments = (ins );
-    let results = (outs MyCast_StarEqOpType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_StarEqOpType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "*=";
@@ -1035,13 +1347,13 @@ def MyCast_StarEqOpOp : MyCast_Op<"starEqOp"> {
 }
 
 def MyCast_DivEqOpOp : MyCast_Op<"divEqOp"> {
-    let arguments = (ins );
-    let results = (outs MyCast_DivEqOpType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_DivEqOpType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "/=";
@@ -1049,13 +1361,13 @@ def MyCast_DivEqOpOp : MyCast_Op<"divEqOp"> {
 }
 
 def MyCast_ModuloEqOpOp : MyCast_Op<"moduloEqOp"> {
-    let arguments = (ins );
-    let results = (outs MyCast_ModuloEqOpType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_ModuloEqOpType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "%=";
@@ -1063,13 +1375,13 @@ def MyCast_ModuloEqOpOp : MyCast_Op<"moduloEqOp"> {
 }
 
 def MyCast_PlusEqOpOp : MyCast_Op<"plusEqOp"> {
-    let arguments = (ins );
-    let results = (outs MyCast_PlusEqOpType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_PlusEqOpType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "+=";
@@ -1077,13 +1389,13 @@ def MyCast_PlusEqOpOp : MyCast_Op<"plusEqOp"> {
 }
 
 def MyCast_MinusEqOpOp : MyCast_Op<"minusEqOp"> {
-    let arguments = (ins );
-    let results = (outs MyCast_MinusEqOpType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_MinusEqOpType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "-=";
@@ -1091,13 +1403,13 @@ def MyCast_MinusEqOpOp : MyCast_Op<"minusEqOp"> {
 }
 
 def MyCast_LeftShiftEqOpOp : MyCast_Op<"leftShiftEqOp"> {
-    let arguments = (ins );
-    let results = (outs MyCast_LeftShiftEqOpType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_LeftShiftEqOpType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "<<=";
@@ -1105,13 +1417,13 @@ def MyCast_LeftShiftEqOpOp : MyCast_Op<"leftShiftEqOp"> {
 }
 
 def MyCast_RightShiftEqOpOp : MyCast_Op<"rightShiftEqOp"> {
-    let arguments = (ins );
-    let results = (outs MyCast_RightShiftEqOpType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_RightShiftEqOpType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << ">>=";
@@ -1119,13 +1431,13 @@ def MyCast_RightShiftEqOpOp : MyCast_Op<"rightShiftEqOp"> {
 }
 
 def MyCast_AndEqOpOp : MyCast_Op<"andEqOp"> {
-    let arguments = (ins );
-    let results = (outs MyCast_AndEqOpType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_AndEqOpType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "&=";
@@ -1133,13 +1445,13 @@ def MyCast_AndEqOpOp : MyCast_Op<"andEqOp"> {
 }
 
 def MyCast_XorEqOpOp : MyCast_Op<"xorEqOp"> {
-    let arguments = (ins );
-    let results = (outs MyCast_XorEqOpType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_XorEqOpType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "^=";
@@ -1147,13 +1459,13 @@ def MyCast_XorEqOpOp : MyCast_Op<"xorEqOp"> {
 }
 
 def MyCast_OrEqOpOp : MyCast_Op<"orEqOp"> {
-    let arguments = (ins );
-    let results = (outs MyCast_OrEqOpType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_OrEqOpType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "|=";
@@ -1161,18 +1473,18 @@ def MyCast_OrEqOpOp : MyCast_Op<"orEqOp"> {
 }
 
 def MyCast_ConditionalExpressionOp : MyCast_Op<"conditionalExpression"> {
-    let arguments = (ins Type<MyCast_LogicalOrExpressionPred>:$cond,
-                         Type<MyCast_ExpressionPred>:$thenPart,
-                         Type<MyCast_ConditionalExpressionPred>:$elsePart);
-    let results = (outs MyCast_ConditionalExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_LogicalOrExpressionPred>:$cond,
+      Type<MyCast_ExpressionPred>:$thenPart,
+      Type<MyCast_ConditionalExpressionPred>:$elsePart);
+  let results = (outs MyCast_ConditionalExpressionType:$res);
+  let assemblyFormat = [{
         `(` `(`$cond `:` type($cond)`)`
         `,` `(`$thenPart `:` type($thenPart)`)`
         `,` `(`$elsePart `:` type($elsePart)`)``)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getCond().getDefiningOp()).prettyPrint(out, 0);
@@ -1181,17 +1493,41 @@ def MyCast_ConditionalExpressionOp : MyCast_Op<"conditionalExpression"> {
         out << " : ";
         llvm::cast<MyCastInterface>(getElsePart().getDefiningOp()).prettyPrint(out, 0);
     }];
+  
+  code addTypeBody = [{
+    auto cond = llvm::cast<MyCastInterface>(getCond().getDefiningOp());
+    auto thenPart = llvm::cast<MyCastInterface>(getThenPart().getDefiningOp());
+    auto elsePart = llvm::cast<MyCastInterface>(getElsePart().getDefiningOp());
+    if (cond.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    if (thenPart.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    if (elsePart.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    if (!canBeCond(cond.getTypeAttr())) {
+      llvm::errs() << "Error: incompatible type for condition in ternary operator.\n";
+      getOperation()->dump();
+      exit(1);
+    }
+    if (!areCompatible(thenPart.getTypeAttr(), elsePart.getTypeAttr())) {
+      llvm::errs() << "Error: ternary operator expression unwell typed.\n";
+      getOperation()->dump();
+      exit(1);
+    }
+    getOperation()->setAttr("myCastType", thenPart.getTypeAttr());
+    return mlir::success();
+  }];
 }
 
 def MyCast_LogicalOrExpressionOp : MyCast_Op<"logicalOrExpression"> {
-    let arguments = (ins Variadic<Type<MyCast_LogicalAndExpressionPred>>:$expr);
-    let results = (outs MyCast_LogicalOrExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Variadic<Type<MyCast_LogicalAndExpressionPred>>:$expr);
+  let results = (outs MyCast_LogicalOrExpressionType:$res);
+  let assemblyFormat = [{
         `(` $expr `:` type($expr) `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         bool first = true;
@@ -1201,17 +1537,36 @@ def MyCast_LogicalOrExpressionOp : MyCast_Op<"logicalOrExpression"> {
             llvm::cast<MyCastInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
         }
     }];
+  
+  code addTypeBody = [{
+    std::optional<mlir::Attribute> exprType = std::nullopt;
+    for (auto expr: getExpr()) {
+      auto exprOp = llvm::cast<MyCastInterface>(expr.getDefiningOp());
+      if (exprOp.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (exprType) {
+        if (!areCompatible(*exprType, exprOp.getTypeAttr())) {
+          llvm::errs() << "Error: logical or expression unwell typed.\n";
+          getOperation()->dump();
+          exit(1);
+        }
+      } else {
+        exprType = exprOp.getTypeAttr();
+      }
+    }
+    return mlir::success();
+  }];
 }
 
 def MyCast_LogicalAndExpressionOp : MyCast_Op<"logicalAndExpression"> {
-    let arguments = (ins Variadic<Type<MyCast_OrExpressionPred>>:$expr);
-    let results = (outs MyCast_LogicalAndExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Variadic<Type<MyCast_OrExpressionPred>>:$expr);
+  let results = (outs MyCast_LogicalAndExpressionType:$res);
+  let assemblyFormat = [{
         `(` $expr `:` type($expr) `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         bool first = true;
@@ -1221,17 +1576,36 @@ def MyCast_LogicalAndExpressionOp : MyCast_Op<"logicalAndExpression"> {
             llvm::cast<MyCastInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
         }
     }];
+  
+  code addTypeBody = [{
+    std::optional<mlir::Attribute> exprType = std::nullopt;
+    for (auto expr: getExpr()) {
+      auto exprOp = llvm::cast<MyCastInterface>(expr.getDefiningOp());
+      if (exprOp.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (exprType) {
+        if (!areCompatible(*exprType, exprOp.getTypeAttr())) {
+          llvm::errs() << "Error: logical and expression unwell typed.\n";
+          getOperation()->dump();
+          exit(1);
+        }
+      } else {
+        exprType = exprOp.getTypeAttr();
+      }
+    }
+    return mlir::success();
+  }];
 }
 
 def MyCast_OrExpressionOp : MyCast_Op<"orExpression"> {
-    let arguments = (ins Variadic<Type<MyCast_XorExpressionPred>>:$expr);
-    let results = (outs MyCast_OrExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Variadic<Type<MyCast_XorExpressionPred>>:$expr);
+  let results = (outs MyCast_OrExpressionType:$res);
+  let assemblyFormat = [{
         `(` $expr `:` type($expr) `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         bool first = true;
@@ -1241,17 +1615,36 @@ def MyCast_OrExpressionOp : MyCast_Op<"orExpression"> {
             llvm::cast<MyCastInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
         }
     }];
+  
+  code addTypeBody = [{
+    std::optional<mlir::Attribute> exprType = std::nullopt;
+    for (auto expr: getExpr()) {
+      auto exprOp = llvm::cast<MyCastInterface>(expr.getDefiningOp());
+      if (exprOp.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (exprType) {
+        if (!areCompatible(*exprType, exprOp.getTypeAttr())) {
+          llvm::errs() << "Error: or expression unwell typed.\n";
+          getOperation()->dump();
+          exit(1);
+        }
+      } else {
+        exprType = exprOp.getTypeAttr();
+      }
+    }
+    return mlir::success();
+  }];
 }
 
 def MyCast_XorExpressionOp : MyCast_Op<"xorExpression"> {
-    let arguments = (ins Variadic<Type<MyCast_AndExpressionPred>>:$expr);
-    let results = (outs MyCast_XorExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Variadic<Type<MyCast_AndExpressionPred>>:$expr);
+  let results = (outs MyCast_XorExpressionType:$res);
+  let assemblyFormat = [{
         `(` $expr `:` type($expr) `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         bool first = true;
@@ -1261,17 +1654,36 @@ def MyCast_XorExpressionOp : MyCast_Op<"xorExpression"> {
             llvm::cast<MyCastInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
         }
     }];
+  
+  code addTypeBody = [{
+    std::optional<mlir::Attribute> exprType = std::nullopt;
+    for (auto expr: getExpr()) {
+      auto exprOp = llvm::cast<MyCastInterface>(expr.getDefiningOp());
+      if (exprOp.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (exprType) {
+        if (!areCompatible(*exprType, exprOp.getTypeAttr())) {
+          llvm::errs() << "Error: xor expression unwell typed.\n";
+          getOperation()->dump();
+          exit(1);
+        }
+      } else {
+        exprType = exprOp.getTypeAttr();
+      }
+    }
+    return mlir::success();
+  }];
 }
 
 def MyCast_AndExpressionOp : MyCast_Op<"andExpression"> {
-    let arguments = (ins Variadic<Type<MyCast_EqualityExpressionPred>>:$expr);
-    let results = (outs MyCast_AndExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Variadic<Type<MyCast_EqualityExpressionPred>>:$expr);
+  let results = (outs MyCast_AndExpressionType:$res);
+  let assemblyFormat = [{
         `(` $expr `:` type($expr) `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         bool first = true;
@@ -1281,21 +1693,40 @@ def MyCast_AndExpressionOp : MyCast_Op<"andExpression"> {
             llvm::cast<MyCastInterface>(expr.getDefiningOp()).prettyPrint(out, 0);
         }
     }];
+  
+  code addTypeBody = [{
+    std::optional<mlir::Attribute> exprType = std::nullopt;
+    for (auto expr: getExpr()) {
+      auto exprOp = llvm::cast<MyCastInterface>(expr.getDefiningOp());
+      if (exprOp.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (exprType) {
+        if (!areCompatible(*exprType, exprOp.getTypeAttr())) {
+          llvm::errs() << "Error: and expression unwell typed.\n";
+          getOperation()->dump();
+          exit(1);
+        }
+      } else {
+        exprType = exprOp.getTypeAttr();
+      }
+    }
+    return mlir::success();
+  }];
 }
 
 def MyCast_EqualityExpressionOp : MyCast_Op<"equalityExpression"> {
-    let arguments = (ins Type<MyCast_EqualityExpressionPred>:$lval,
-                         Type<MyCast_EqualityOperatorPred>:$op,
-                         Type<MyCast_RelationalExpressionPred>:$rval);
-    let results = (outs MyCast_EqualityExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_EqualityExpressionPred>:$lval,
+      Type<MyCast_EqualityOperatorPred>:$op,
+      Type<MyCast_RelationalExpressionPred>:$rval);
+  let results = (outs MyCast_EqualityExpressionType:$res);
+  let assemblyFormat = [{
         `(` $lval `:` type($lval)`)`
         `,` $op `:` type($op)`)`
         `,` $rval  `:` type($rval)`)``)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getLval().getDefiningOp()).prettyPrint(out, 0);
@@ -1304,16 +1735,32 @@ def MyCast_EqualityExpressionOp : MyCast_Op<"equalityExpression"> {
         out << " ";
         llvm::cast<MyCastInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
     }];
+
+    code addTypeBody = [{
+      auto lval = llvm::cast<MyCastInterface>(getLval().getDefiningOp());
+      auto rval = llvm::cast<MyCastInterface>(getRval().getDefiningOp());
+      if (lval.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (rval.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (!areCompatible(lval.getTypeAttr(), rval.getTypeAttr())) {
+        llvm::errs() << "Error: Equality expression unwell typed.\n";
+        getOperation()->dump();
+        exit(1);
+      }
+      getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), false, 1));
+      return mlir::success();
+    }];
 }
 
 def MyCast_EqualOperatorOp : MyCast_Op<"equalOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_EqualOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_EqualOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "==";
@@ -1321,13 +1768,13 @@ def MyCast_EqualOperatorOp : MyCast_Op<"equalOperator"> {
 }
 
 def MyCast_NotEqualOperatorOp : MyCast_Op<"notEqualOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_NotEqualOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_NotEqualOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "!=";
@@ -1335,11 +1782,11 @@ def MyCast_NotEqualOperatorOp : MyCast_Op<"notEqualOperator"> {
 }
 
 def MyCast_RelationalExpressionOp : MyCast_Op<"relationalExpression"> {
-    let arguments = (ins Type<MyCast_RelationalExpressionPred>:$lval,
-                         Type<MyCast_RelationalOperatorPred>:$op,
-                         Type<MyCast_ShiftExpressionPred>:$rval);
-    let results = (outs MyCast_RelationalExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_RelationalExpressionPred>:$lval,
+      Type<MyCast_RelationalOperatorPred>:$op,
+      Type<MyCast_ShiftExpressionPred>:$rval);
+  let results = (outs MyCast_RelationalExpressionType:$res);
+  let assemblyFormat = [{
         `(`
         `(` $lval `:` type($lval)`)`
         `,` `(` $op `:` type($op)`)`
@@ -1347,7 +1794,7 @@ def MyCast_RelationalExpressionOp : MyCast_Op<"relationalExpression"> {
         `)` attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getLval().getDefiningOp()).prettyPrint(out, 0);
@@ -1356,16 +1803,32 @@ def MyCast_RelationalExpressionOp : MyCast_Op<"relationalExpression"> {
         out << " ";
         llvm::cast<MyCastInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
     }];
+
+    code addTypeBody = [{
+      auto lval = llvm::cast<MyCastInterface>(getLval().getDefiningOp());
+      auto rval = llvm::cast<MyCastInterface>(getRval().getDefiningOp());
+      if (lval.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (rval.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (!areCompatible(lval.getTypeAttr(), rval.getTypeAttr())) {
+        llvm::errs() << "Error: Relational expression unwell typed.\n";
+        getOperation()->dump();
+        exit(1);
+      }
+      getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), false, 1));
+      return mlir::success();
+    }];
 }
 
 def MyCast_GeOperatorOp : MyCast_Op<"geOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_GeOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_GeOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << ">=";
@@ -1373,13 +1836,13 @@ def MyCast_GeOperatorOp : MyCast_Op<"geOperator"> {
 }
 
 def MyCast_GtOperatorOp : MyCast_Op<"gtOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_GtOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_GtOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << ">";
@@ -1387,13 +1850,13 @@ def MyCast_GtOperatorOp : MyCast_Op<"gtOperator"> {
 }
 
 def MyCast_LeOperatorOp : MyCast_Op<"leOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_LeOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_LeOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "<=";
@@ -1401,13 +1864,13 @@ def MyCast_LeOperatorOp : MyCast_Op<"leOperator"> {
 }
 
 def MyCast_LtOperatorOp : MyCast_Op<"ltOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_LtOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_LtOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "<";
@@ -1415,18 +1878,18 @@ def MyCast_LtOperatorOp : MyCast_Op<"ltOperator"> {
 }
 
 def MyCast_ShiftExpressionOp : MyCast_Op<"shiftExpression"> {
-    let arguments = (ins Type<MyCast_ShiftExpressionPred>:$lval,
-                         Type<MyCast_ShiftOperatorPred>:$op,
-                         Type<MyCast_AdditiveExpressionPred>:$rval);
-    let results = (outs MyCast_ShiftExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_ShiftExpressionPred>:$lval,
+      Type<MyCast_ShiftOperatorPred>:$op,
+      Type<MyCast_AdditiveExpressionPred>:$rval);
+  let results = (outs MyCast_ShiftExpressionType:$res);
+  let assemblyFormat = [{
         `(` $lval `:` type($lval)`)`
         `,` $op `:` type($op)`)`
         `,` $rval  `:` type($rval)`)``)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getLval().getDefiningOp()).prettyPrint(out, 0);
@@ -1435,16 +1898,32 @@ def MyCast_ShiftExpressionOp : MyCast_Op<"shiftExpression"> {
         out << " ";
         llvm::cast<MyCastInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
     }];
+
+    code addTypeBody = [{
+      auto lval = llvm::cast<MyCastInterface>(getLval().getDefiningOp());
+      auto rval = llvm::cast<MyCastInterface>(getRval().getDefiningOp());
+      if (lval.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (rval.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (!areCompatible(lval.getTypeAttr(), rval.getTypeAttr())) {
+        llvm::errs() << "Error: Shift expression unwell typed.\n";
+        getOperation()->dump();
+        exit(1);
+      }
+      getOperation()->setAttr("myCastType", lval.getTypeAttr());
+      return mlir::success();
+    }];
 }
 
 def MyCast_LshiftOperatorOp : MyCast_Op<"lshiftOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_LshiftOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_LshiftOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "<<";
@@ -1452,13 +1931,13 @@ def MyCast_LshiftOperatorOp : MyCast_Op<"lshiftOperator"> {
 }
 
 def MyCast_RshiftOperatorOp : MyCast_Op<"rshiftOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_RshiftOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_RshiftOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << ">>";
@@ -1466,18 +1945,18 @@ def MyCast_RshiftOperatorOp : MyCast_Op<"rshiftOperator"> {
 }
 
 def MyCast_AdditiveExpressionOp : MyCast_Op<"additiveExpression"> {
-    let arguments = (ins Type<MyCast_AdditiveExpressionPred>:$lval,
-                         Type<MyCast_AdditiveOperatorPred>:$op,
-                         Type<MyCast_MultiplicativeExpressionPred>:$rval);
-    let results = (outs MyCast_AdditiveExpressionType:$res);
-    let assemblyFormat = [{
-        `(` $lval `:` type($lval)`)`
-        `,` $op `:` type($op)`)`
-        `,` $rval  `:` type($rval)`)``)`
+  let arguments = (ins Type<MyCast_AdditiveExpressionPred>:$lval,
+      Type<MyCast_AdditiveOperatorPred>:$op,
+      Type<MyCast_MultiplicativeExpressionPred>:$rval);
+  let results = (outs MyCast_AdditiveExpressionType:$res);
+  let assemblyFormat = [{
+        `(``(` $lval `:` type($lval)`)`
+        `,` `(` $op `:` type($op)`)`
+        `,` `(`$rval  `:` type($rval)`)``)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getLval().getDefiningOp()).prettyPrint(out, 0);
@@ -1486,16 +1965,32 @@ def MyCast_AdditiveExpressionOp : MyCast_Op<"additiveExpression"> {
         out << " ";
         llvm::cast<MyCastInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
     }];
+
+    code addTypeBody = [{
+      auto lval = llvm::cast<MyCastInterface>(getLval().getDefiningOp());
+      auto rval = llvm::cast<MyCastInterface>(getRval().getDefiningOp());
+      if (lval.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (rval.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (!areCompatible(lval.getTypeAttr(), rval.getTypeAttr())) {
+        llvm::errs() << "Error: Additive expression unwell typed.\n";
+        getOperation()->dump();
+        exit(1);
+      }
+      getOperation()->setAttr("myCastType", lval.getTypeAttr());
+      return mlir::success();
+    }];
 }
 
 def MyCast_PlusOperatorOp : MyCast_Op<"plusOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_PlusOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_PlusOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "+";
@@ -1503,32 +1998,32 @@ def MyCast_PlusOperatorOp : MyCast_Op<"plusOperator"> {
 }
 
 def MyCast_MinusOperatorOp : MyCast_Op<"minusOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_MinusOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_MinusOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "-";
     }];
 }
 
-def MyCast_MultiplicativeExpressionOp : MyCast_Op<"MultiplicativeExpression"> {
-    let arguments = (ins Type<MyCast_MultiplicativeExpressionPred>:$lval,
-                         Type<MyCast_MultiplicativeOperatorPred>:$op,
-                         Type<MyCast_CastExpressionPred>:$rval);
-    let results = (outs MyCast_MultiplicativeExpressionType:$res);
-    let assemblyFormat = [{
-        `(` $lval `:` type($lval)`)`
-        `,` $op `:` type($op)`)`
-        `,` $rval  `:` type($rval)`)``)`
+def MyCast_MultiplicativeExpressionOp : MyCast_Op<"multiplicativeExpression"> {
+  let arguments = (ins Type<MyCast_MultiplicativeExpressionPred>:$lval,
+      Type<MyCast_MultiplicativeOperatorPred>:$op,
+      Type<MyCast_CastExpressionPred>:$rval);
+  let results = (outs MyCast_MultiplicativeExpressionType:$res);
+  let assemblyFormat = [{
+        `(``(` $lval `:` type($lval)`)`
+        `,` `(` $op `:` type($op)`)`
+        `,` `(`$rval  `:` type($rval)`)``)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getLval().getDefiningOp()).prettyPrint(out, 0);
@@ -1537,16 +2032,32 @@ def MyCast_MultiplicativeExpressionOp : MyCast_Op<"MultiplicativeExpression"> {
         out << " ";
         llvm::cast<MyCastInterface>(getRval().getDefiningOp()).prettyPrint(out, 0);
     }];
+
+    code addTypeBody = [{
+      auto lval = llvm::cast<MyCastInterface>(getLval().getDefiningOp());
+      auto rval = llvm::cast<MyCastInterface>(getRval().getDefiningOp());
+      if (lval.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (rval.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (!areCompatible(lval.getTypeAttr(), rval.getTypeAttr())) {
+        llvm::errs() << "Error: Multiplicative expression unwell typed.\n";
+        getOperation()->dump();
+        exit(1);
+      }
+      getOperation()->setAttr("myCastType", lval.getTypeAttr());
+      return mlir::success();
+    }];
 }
 
 def MyCast_MultOperatorOp : MyCast_Op<"multOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_MultOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_MultOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "*";
@@ -1554,13 +2065,13 @@ def MyCast_MultOperatorOp : MyCast_Op<"multOperator"> {
 }
 
 def MyCast_DivOperatorOp : MyCast_Op<"divOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_DivOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_DivOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "/";
@@ -1568,13 +2079,13 @@ def MyCast_DivOperatorOp : MyCast_Op<"divOperator"> {
 }
 
 def MyCast_ModuloOperatorOp : MyCast_Op<"moduloOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_ModuloOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_ModuloOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "%";
@@ -1582,16 +2093,16 @@ def MyCast_ModuloOperatorOp : MyCast_Op<"moduloOperator"> {
 }
 
 def MyCast_CastExpressionOp : MyCast_Op<"castExpression"> {
-    let arguments = (ins Type<MyCast_TypePred>:$newType,
-                         Type<MyCast_UnaryExpressionPred>:$expr);
-    let results = (outs MyCast_CastExpressionType:$res);
-    let assemblyFormat = [{
-        `(` $newType `:` type($newType) `)`
+  let arguments = (ins Type<MyCast_TypePred>:$newType,
+      Type<MyCast_UnaryExpressionPred>:$expr);
+  let results = (outs MyCast_CastExpressionType:$res);
+  let assemblyFormat = [{
+        `(``(` $newType `:` type($newType) `)`
         `,``(` $expr `:` type($expr) `)``)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "(";
@@ -1599,34 +2110,103 @@ def MyCast_CastExpressionOp : MyCast_Op<"castExpression"> {
         out << ") ";
         llvm::cast<MyCastInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
     }];
+  
+  code addTypeBody = [{
+    auto newType = llvm::cast<MyCastInterface>(getNewType().getDefiningOp());
+    if (newType.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    getOperation()->setAttr("myCastType", newType.getTypeAttr());
+    return llvm::cast<MyCastInterface>(getExpr().getDefiningOp()).addType(globals, locals, funMap, fieldMap);
+  }];
 }
 
 def MyCast_UnopExpressionOp : MyCast_Op<"unopExpression"> {
-    let arguments = (ins Type<MyCast_UnaryOperatorPred>:$op,
-                         Type<MyCast_UnaryExpressionPred>:$expr);
-    let results = (outs MyCast_UnopExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_UnaryOperatorPred>:$op,
+      Type<MyCast_UnaryExpressionPred>:$expr);
+  let results = (outs MyCast_UnopExpressionType:$res);
+  let assemblyFormat = [{
         `(``(` $op `:` type($op)`)`
         `,` `(` $expr `:` type($expr)`)``)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getOp().getDefiningOp()).prettyPrint(out, 0);
         llvm::cast<MyCastInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
     }];
+  
+  code addTypeBody = [{
+    auto expr = llvm::cast<MyCastInterface>(getExpr().getDefiningOp());
+    if (expr.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    auto exprType = expr.getTypeAttr();
+    if (auto op = llvm::dyn_cast<ccomp::myCast::IncrOperatorOp>(getOp().getDefiningOp())) {
+      if (!(mlir::isa<ccomp::myCast::IntegerAttr>(exprType) ||
+            mlir::isa<ccomp::myCast::FloatAttr>(exprType))) {
+        goto unwellTyped;
+      }
+    } else if (auto op = llvm::dyn_cast<ccomp::myCast::DecrOperatorOp>(getOp().getDefiningOp())) {
+      if (!(mlir::isa<ccomp::myCast::IntegerAttr>(exprType) ||
+            mlir::isa<ccomp::myCast::FloatAttr>(exprType))) {
+            goto unwellTyped;
+      }
+    } else if (auto op = llvm::dyn_cast<ccomp::myCast::AddrofOperatorOp>(getOp().getDefiningOp())) {
+      getOperation()->setAttr("myCastType", ccomp::myCast::PtrAttr::get(getContext(), exprType, 0));
+      return mlir::success();
+    } else if (auto op = llvm::dyn_cast<ccomp::myCast::DerefOperatorOp>(getOp().getDefiningOp())) {
+      if (auto ptrType = llvm::dyn_cast<ccomp::myCast::PtrAttr>(exprType)) {
+        getOperation()->setAttr("myCastType", ptrType.getBaseType());
+        return mlir::success();
+      }
+      goto unwellTyped;
+    } else if (auto op = llvm::dyn_cast<ccomp::myCast::PositiveOperatorOp>(getOp().getDefiningOp())) {
+      if (auto intType = llvm::dyn_cast<ccomp::myCast::IntegerAttr>(exprType)) {
+        getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), true, intType.getBw()));
+        return mlir::success();
+      }
+      if (auto floatType = llvm::dyn_cast<ccomp::myCast::FloatAttr>(exprType)) {
+        getOperation()->setAttr("myCastType", ccomp::myCast::FloatAttr::get(getContext(), true, floatType.getEbw(), floatType.getMbw()));
+        return mlir::success();
+      }
+      goto unwellTyped;
+    } else if (auto op = llvm::dyn_cast<ccomp::myCast::NegativeOperatorOp>(getOp().getDefiningOp())) {
+      if (auto intType = llvm::dyn_cast<ccomp::myCast::IntegerAttr>(exprType)) {
+        getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), true, intType.getBw()));
+        return mlir::success();
+      }
+      if (auto floatType = llvm::dyn_cast<ccomp::myCast::FloatAttr>(exprType)) {
+        getOperation()->setAttr("myCastType", ccomp::myCast::FloatAttr::get(getContext(), true, floatType.getEbw(), floatType.getMbw()));
+        return mlir::success();
+      }
+      goto unwellTyped;
+    } else if (auto op = llvm::dyn_cast<ccomp::myCast::NotOperatorOp>(getOp().getDefiningOp())) {
+      if (!mlir::isa<ccomp::myCast::IntegerAttr>(exprType))
+        goto unwellTyped;
+    } else if (auto op = llvm::dyn_cast<ccomp::myCast::LnotOperatorOp>(getOp().getDefiningOp())) {
+      if (!mlir::isa<ccomp::myCast::IntegerAttr>(exprType))
+        goto unwellTyped;
+      getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), false, 1));
+      return mlir::success();
+    }
+    getOperation()->setAttr("myCastType", exprType);
+    return mlir::success();
+    unwellTyped:
+      llvm::errs() << "Error: unop expression unwell typed.\n";
+      getOperation()->dump();
+      exit(1);
+  }];
 }
 
 def MyCast_IncrOperatorOp : MyCast_Op<"incrOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_IncrOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_IncrOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "++";
@@ -1634,13 +2214,13 @@ def MyCast_IncrOperatorOp : MyCast_Op<"incrOperator"> {
 }
 
 def MyCast_DecrOperatorOp : MyCast_Op<"decrOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_DecrOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_DecrOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "--";
@@ -1648,13 +2228,13 @@ def MyCast_DecrOperatorOp : MyCast_Op<"decrOperator"> {
 }
 
 def MyCast_AddrofOperatorOp : MyCast_Op<"addrofOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_AddrofOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_AddrofOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "&";
@@ -1662,13 +2242,13 @@ def MyCast_AddrofOperatorOp : MyCast_Op<"addrofOperator"> {
 }
 
 def MyCast_DerefOperatorOp : MyCast_Op<"derefOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_DerefOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_DerefOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "*";
@@ -1676,13 +2256,13 @@ def MyCast_DerefOperatorOp : MyCast_Op<"derefOperator"> {
 }
 
 def MyCast_PositiveOperatorOp : MyCast_Op<"positiveOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_PositiveOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_PositiveOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "+";
@@ -1690,13 +2270,13 @@ def MyCast_PositiveOperatorOp : MyCast_Op<"positiveOperator"> {
 }
 
 def MyCast_NegativeOperatorOp : MyCast_Op<"negativeOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_NegativeOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_NegativeOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "-";
@@ -1704,13 +2284,13 @@ def MyCast_NegativeOperatorOp : MyCast_Op<"negativeOperator"> {
 }
 
 def MyCast_NotOperatorOp : MyCast_Op<"notOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_NotOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_NotOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "~";
@@ -1718,30 +2298,31 @@ def MyCast_NotOperatorOp : MyCast_Op<"notOperator"> {
 }
 
 def MyCast_LnotOperatorOp : MyCast_Op<"lnotOperator"> {
-    let arguments = (ins );
-    let results = (outs MyCast_LnotOperatorType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins);
+  let results = (outs MyCast_LnotOperatorType:$res);
+  let assemblyFormat = [{
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "!";
     }];
 }
 
-def MyCast_SizeofExpressionOp : MyCast_Op<"sizeofExpression", [AttrSizedOperandSegments]> {
-    let arguments = (ins Optional<Type<MyCast_UnaryExpressionPred>>:$expr,
-                         Optional<Type<MyCast_TypePred>>:$typeExpr);
-    let results = (outs MyCast_SizeofExpressionType:$res);
-    let assemblyFormat = [{
+def MyCast_SizeofExpressionOp
+    : MyCast_Op<"sizeofExpression", [AttrSizedOperandSegments]> {
+  let arguments = (ins Optional<Type<MyCast_UnaryExpressionPred>>:$expr,
+      Optional<Type<MyCast_TypePred>>:$typeExpr);
+  let results = (outs MyCast_SizeofExpressionType:$res);
+  let assemblyFormat = [{
         `(``(` $expr `:` type($expr) `)`
         `,` `(` $typeExpr `:` type($typeExpr) `)``)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "sizeof (";
@@ -1751,19 +2332,27 @@ def MyCast_SizeofExpressionOp : MyCast_Op<"sizeofExpression", [AttrSizedOperandS
             llvm::cast<MyCastInterface>(getTypeExpr().getDefiningOp()).prettyPrint(out, 0);
         out << ");";
     }];
+  
+  code addTypeBody = [{
+    if (getExpr())
+      if(llvm::cast<MyCastInterface>(getExpr().getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+    getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), false, 0));
+    return mlir::success();
+  }];
 }
 
 def MyCast_ArrayExpressionOp : MyCast_Op<"arrayExpression"> {
-    let arguments = (ins Type<MyCast_PostfixExpressionPred>:$expr,
-                         Type<MyCast_ExpressionPred>:$index);
-    let results = (outs MyCast_ArrayExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_PostfixExpressionPred>:$expr,
+      Type<MyCast_ExpressionPred>:$index);
+  let results = (outs MyCast_ArrayExpressionType:$res);
+  let assemblyFormat = [{
         `(``(` $expr `:` type($expr) `)`
         `,` `(` $index `:` type($index) `)``)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
@@ -1771,19 +2360,43 @@ def MyCast_ArrayExpressionOp : MyCast_Op<"arrayExpression"> {
         llvm::cast<MyCastInterface>(getIndex().getDefiningOp()).prettyPrint(out, 0);
         out << "]";
     }];
+  
+  code addTypeBody = [{
+    auto expr = llvm::cast<MyCastInterface>(getExpr().getDefiningOp());
+    auto index = llvm::cast<MyCastInterface>(getIndex().getDefiningOp());
+    if (expr.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    if (index.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+
+    if (auto exprType = llvm::dyn_cast<ccomp::myCast::PtrAttr>(expr.getTypeAttr())) {
+      getOperation()->setAttr("myCastType", exprType.getBaseType());
+    } else {
+      llvm::errs() << "only pointer-compatible types can be used as an array.\n";
+      getOperation()->dump();
+      exit(1);
+    }
+    
+    if (!mlir::isa<ccomp::myCast::IntegerAttr>(index.getTypeAttr())) {
+      llvm::errs() << "only integers can be used as array index.\n";
+      getOperation()->dump();
+      exit(1);
+    }
+    return mlir::success();
+  }];
 }
 
 def MyCast_FunCallExpressionOp : MyCast_Op<"funCallExpression"> {
-    let arguments = (ins Builtin_StringAttr:$funName,
-                         Variadic<Type<MyCast_AssignmentExpressionPred>>:$args);
-    let results = (outs MyCast_FunCallExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_StringAttr:$funName,
+      Variadic<Type<MyCast_AssignmentExpressionPred>>:$args);
+  let results = (outs MyCast_FunCallExpressionType:$res);
+  let assemblyFormat = [{
         `(` $funName
         `,` `(` $args `:` type($args) `)``)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << getFunName().getValue().data();
@@ -1796,8 +2409,8 @@ def MyCast_FunCallExpressionOp : MyCast_Op<"funCallExpression"> {
         }
         out << ")";
     }];
-    
-    code checkDeclaredFunBody = [{
+
+  code checkDeclaredFunBody = [{
         std::string funName = getFunName().getValue().data();
         for (auto fun: declared) {
             if (fun.compare(funName) == 0)
@@ -1806,91 +2419,204 @@ def MyCast_FunCallExpressionOp : MyCast_Op<"funCallExpression"> {
         llvm::errs() << "Error: function " << funName << " not declared.\n";
         exit(1);
     }];
+
+  code addTypeBody = [{
+    std::string funName = getFunName().getValue().data();
+    if (!funMap.contains(funName)) {
+      llvm::errs() << "Error: function " << funName << " not declared.\n";
+      getOperation()->dump();
+      exit(1);
+    }
+    getOperation()->setAttr("myCastType", funMap.getReturnType(funName));
+    auto &argsType = funMap.getArguments(funName);
+    auto args = getArgs();
+    if (argsType.size() != args.size()) {
+      llvm::errs() << "Error: function " << funName << " waits " << argsType.size() << " arguments, but " << args.size() << " were given.\n";
+      getOperation()->dump();
+      exit(1);
+    }
+    for (size_t i = 0; i < argsType.size(); ++i) {
+      auto arg = llvm::cast<MyCastInterface>(args[i].getDefiningOp());
+      if (arg.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (!areCompatible(argsType[i], arg.getTypeAttr())) {
+        llvm::errs() << "Error: argument " << i << " of function " << funName << " unwell typed.\n";
+        getOperation()->dump();
+        exit(1);
+      }
+    }
+
+    return mlir::success();
+  }];
 }
 
 def MyCast_FieldExpressionOp : MyCast_Op<"fieldExpression"> {
-    let arguments = (ins Type<MyCast_PostfixExpressionPred>:$expr,
-                         Builtin_StringAttr:$field);
-    let results = (outs MyCast_FieldExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_PostfixExpressionPred>:$expr,
+      Builtin_StringAttr:$field);
+  let results = (outs MyCast_FieldExpressionType:$res);
+  let assemblyFormat = [{
         `(``(` $expr `:` type($expr) `)`
         `,` $field `)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
         out << "." << getField().getValue().data();
     }];
+
+  code addTypeBody = [{
+    auto expr = llvm::cast<MyCastInterface>(getExpr().getDefiningOp());
+    if (expr.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    auto exprType = expr.getTypeAttr();
+    if (mlir::isa<ccomp::myCast::EnumAttr>(exprType)) {
+      getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), false, 0));
+      return mlir::success();
+    }
+    std::string field = getField().getValue().data();
+    if (auto structType = llvm::dyn_cast<ccomp::myCast::StructAttr>(exprType)) {
+      getOperation()->setAttr("myCastType", fieldMap[structType.getName().getValue().data()][field]);
+      return mlir::success();
+    }
+    if (auto unionType = llvm::dyn_cast<ccomp::myCast::UnionAttr>(exprType)) {
+      getOperation()->setAttr("myCastType", fieldMap[unionType.getName().getValue().data()][field]);
+      return mlir::success();
+    }
+    llvm::errs() << "Error: only enum, struct, and union can be used to extract a field.\n";
+    getOperation()->dump();
+    exit(1);
+  }];
 }
 
 def MyCast_PtrFieldExpressionOp : MyCast_Op<"ptrFieldExpression"> {
-    let arguments = (ins Type<MyCast_PostfixExpressionPred>:$expr,
-                         Builtin_StringAttr:$field);
-    let results = (outs MyCast_PtrFieldExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_PostfixExpressionPred>:$expr,
+      Builtin_StringAttr:$field);
+  let results = (outs MyCast_PtrFieldExpressionType:$res);
+  let assemblyFormat = [{
         `(``(` $expr `:` type($expr) `)`
         `,` $field `)` 
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
         out << "->" << getField().getValue().data();
     }];
+
+  code addTypeBody = [{
+    auto expr = llvm::cast<MyCastInterface>(getExpr().getDefiningOp());
+    if (expr.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    auto exprType = expr.getTypeAttr();
+    mlir::Attribute baseType;
+    if (auto ptrType = llvm::dyn_cast<ccomp::myCast::PtrAttr>(exprType)) {
+      baseType = ptrType.getBaseType();
+    } else {
+      llvm::errs() << "Error: only pointer type can be use to extract a field from a pointer.\n";
+      getOperation()->dump();
+      exit(1);
+    }
+
+
+    if (mlir::isa<ccomp::myCast::EnumAttr>(baseType)) {
+      getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), false, 0));
+      return mlir::success();
+    }
+    std::string field = getField().getValue().data();
+    if (auto structType = llvm::dyn_cast<ccomp::myCast::StructAttr>(baseType)) {
+      getOperation()->setAttr("myCastType", fieldMap[structType.getName().getValue().data()][field]);
+      return mlir::success();
+    }
+    if (auto unionType = llvm::dyn_cast<ccomp::myCast::UnionAttr>(baseType)) {
+      getOperation()->setAttr("myCastType", fieldMap[unionType.getName().getValue().data()][field]);
+      return mlir::success();
+    }
+    llvm::errs() << "Error: only enum, struct, and union can be used to extract a field.\n";
+    getOperation()->dump();
+    exit(1);
+  }];
 }
 
 def MyCast_PostincrExpressionOp : MyCast_Op<"postincrExpression"> {
-    let arguments = (ins Type<MyCast_PostfixExpressionPred>:$expr);
-    let results = (outs MyCast_PostincrExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_PostfixExpressionPred>:$expr);
+  let results = (outs MyCast_PostincrExpressionType:$res);
+  let assemblyFormat = [{
         `(` $expr `:` type($expr) `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
         out << "++";
     }];
+
+  code addTypeBody = [{
+    auto expr = llvm::cast<MyCastInterface>(getExpr().getDefiningOp());
+    if (expr.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    auto exprType = expr.getTypeAttr();
+    if (!(mlir::isa<ccomp::myCast::IntegerAttr>(exprType) ||
+          mlir::isa<ccomp::myCast::FloatAttr>(exprType))) {
+      llvm::errs() << "Error: postfix increment expression unwell typed.\n";
+      getOperation()->dump();
+      exit(1);
+    }
+    return mlir::success();
+  }];
 }
 
 def MyCast_PostdecrExpressionOp : MyCast_Op<"postdecrExpression"> {
-    let arguments = (ins Type<MyCast_PostfixExpressionPred>:$expr);
-    let results = (outs MyCast_PostdecrExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_PostfixExpressionPred>:$expr);
+  let results = (outs MyCast_PostdecrExpressionType:$res);
+  let assemblyFormat = [{
         `(` $expr `:` type($expr) `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
         out << "--";
     }];
+
+  code addTypeBody = [{
+    auto expr = llvm::cast<MyCastInterface>(getExpr().getDefiningOp());
+    if (expr.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    auto exprType = expr.getTypeAttr();
+    if (!(mlir::isa<ccomp::myCast::IntegerAttr>(exprType) ||
+          mlir::isa<ccomp::myCast::FloatAttr>(exprType))) {
+      llvm::errs() << "Error: postfix decrement expression unwell typed.\n";
+      getOperation()->dump();
+      exit(1);
+    }
+    return mlir::success();
+  }];
 }
 
 def MyCast_VarExpressionOp : MyCast_Op<"varExpression"> {
-    let arguments = (ins Builtin_StringAttr:$name);
-    let results = (outs MyCast_VarExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_StringAttr:$name);
+  let results = (outs MyCast_VarExpressionType:$res);
+  let assemblyFormat = [{
         `(` $name `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << getName().getValue().data();
     }];
 
-    code checkDefinedVarBody = [{
+  code checkDefinedVarBody = [{
         std::string varName = getName().getValue().data();
         for (std::string elt: declared)
             if (elt.compare(varName) == 0)
@@ -1898,79 +2624,121 @@ def MyCast_VarExpressionOp : MyCast_Op<"varExpression"> {
         llvm::errs() << "Error: undefined variable " << getName().getValue().data() << "\n";
         exit(1);
     }];
+
+  code addTypeBody = [{
+    std::string name = getName().getValue().data();
+    if (locals.contains(name)) {
+      getOperation()->setAttr("myCastType", locals[name]);
+      return mlir::success();
+    }
+    if (globals.contains(name)) {
+      getOperation()->setAttr("myCastType", globals[name]);
+      return mlir::success();
+    }
+    llvm::errs() << "Error: variable " << name << " does not exist.\n";
+    getOperation()->dump();
+    exit(1);
+  }];
 }
 
 def MyCast_IntExpressionOp : MyCast_Op<"intExpression"> {
-    let arguments = (ins Builtin_IntegerAttr:$val);
-    let results = (outs MyCast_IntExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_IntegerAttr:$val);
+  let results = (outs MyCast_IntExpressionType:$res);
+  let assemblyFormat = [{
         `(` $val `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << *getVal().getValue().getRawData();
     }];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::IntegerAttr::get(getContext(), false, 0));
+    return mlir::success();
+  }];
 }
 
 def MyCast_FloatExpressionOp : MyCast_Op<"floatExpression"> {
-    let arguments = (ins Builtin_FloatAttr:$val);
-    let results = (outs MyCast_FloatExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_FloatAttr:$val);
+  let results = (outs MyCast_FloatExpressionType:$res);
+  let assemblyFormat = [{
         `(` $val `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << getVal().getValue().convertToDouble();
     }];
+  
+  code addTypeBody = [{
+    getOperation()->setAttr("myCastType", ccomp::myCast::FloatAttr::get(getContext(), false, 0, 0));
+    return mlir::success();
+  }];
 }
 
 def MyCast_StringExpressionOp : MyCast_Op<"stringExpression"> {
-    let arguments = (ins Builtin_StringAttr:$val);
-    let results = (outs MyCast_StringExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Builtin_StringAttr:$val);
+  let results = (outs MyCast_StringExpressionType:$res);
+  let assemblyFormat = [{
         `(` $val `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << getVal().getValue().data();
     }];
+  
+  code addTypeBody = [{
+    auto charType = ccomp::myCast::IntegerAttr::get(getContext(), true, 8);
+
+    auto ptrType = ccomp::myCast::PtrAttr::get(getContext(), charType, strlen(getVal().getValue().data())+1);
+    getOperation()->setAttr("myCastType", ptrType);
+    return mlir::success();
+  }];
+
 }
 
 def MyCast_ParentExpressionOp : MyCast_Op<"parentExpression"> {
-    let arguments = (ins Type<MyCast_ExpressionPred>:$expr);
-    let results = (outs MyCast_ParentExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_ExpressionPred>:$expr);
+  let results = (outs MyCast_ParentExpressionType:$res);
+  let assemblyFormat = [{
         `(` $expr `:` type($expr) `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "(";
         llvm::cast<MyCastInterface>(getExpr().getDefiningOp()).prettyPrint(out, 0);
         out << ")";
     }];
+
+  code addTypeBody = [{
+    auto expr = llvm::cast<MyCastInterface>(getExpr().getDefiningOp());
+    if (expr.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    getOperation()->setAttr("myCastType", expr.getTypeAttr());
+    return mlir::success();
+  }];
 }
 
 def MyCast_StructureExpressionOp : MyCast_Op<"structureExpression"> {
-    let arguments = (ins Variadic<Type<MyCast_AssignmentExpressionPred>>:$val);
-    let results = (outs MyCast_StructureExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Variadic<Type<MyCast_AssignmentExpressionPred>>:$val);
+  let results = (outs MyCast_StructureExpressionType:$res);
+  let assemblyFormat = [{
         `(` $val `:` type($val) `)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "{";
@@ -1982,19 +2750,40 @@ def MyCast_StructureExpressionOp : MyCast_Op<"structureExpression"> {
         }
         out << "}";
     }];
+  
+  code addTypeBody = [{
+    std::optional<mlir::Attribute> valType;
+    for (auto val: getVal()) {
+      auto valOp = llvm::cast<MyCastInterface>(val.getDefiningOp());
+      if (valOp.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (valType) {
+        if (!areCompatible(*valType, valOp.getTypeAttr())) {
+          llvm::errs() << "Error: structured expression unwell typed.\n";
+          getOperation()->dump();
+          exit(1);
+        }
+      } else {
+        valType = valOp.getTypeAttr();
+      }
+    }
+    auto ptrType = ccomp::myCast::PtrAttr::get(getContext(), *valType, 0);
+    getOperation()->setAttr("myCastType", ptrType);
+    return mlir::success();
+  }];
 }
 
 def MyCast_GenericExpressionOp : MyCast_Op<"genericExpression"> {
-    let arguments = (ins Type<MyCast_AssignmentExpressionPred>:$expr,
-                         Variadic<Type<MyCast_GenericItemPred>>:$cases);
-    let results = (outs MyCast_GenericExpressionType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_AssignmentExpressionPred>:$expr,
+      Variadic<Type<MyCast_GenericItemPred>>:$cases);
+  let results = (outs MyCast_GenericExpressionType:$res);
+  let assemblyFormat = [{
         `(``(` $expr `:` type($expr) `)`
         `,` `(` $cases `:` type($cases)`)``)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "_Generic (";
@@ -2005,40 +2794,80 @@ def MyCast_GenericExpressionOp : MyCast_Op<"genericExpression"> {
         }
         out << ")";
     }];
+
+  code addTypeBody = [{
+    if (llvm::cast<MyCastInterface>(getExpr().getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    std::optional<mlir::Attribute> caseType;
+    for (auto case_: getCases()) {
+      auto caseOp = llvm::cast<MyCastInterface>(case_.getDefiningOp());
+      if (caseOp.addType(globals, locals, funMap, fieldMap).failed())
+        return mlir::failure();
+      if (caseType) {
+        if (!areCompatible(*caseType, caseOp.getTypeAttr())) {
+          llvm::errs() << "Error: structured expression unwell typed.\n";
+          getOperation()->dump();
+          exit(1);
+        }
+      } else {
+        caseType = caseOp.getTypeAttr();
+      }
+    }
+    getOperation()->setAttr("myCastInterface", *caseType);
+    return mlir::success();
+  }];
 }
 
 def MyCast_TypeGenericItemOp : MyCast_Op<"typeGenericItem"> {
-    let arguments = (ins Type<MyCast_TypePred>:$cond,
-                         Type<MyCast_AssignmentExpressionPred>:$body);
-    let results = (outs MyCast_TypeGenericItemType:$res);
-    let assemblyFormat = [{
+  let arguments = (ins Type<MyCast_TypePred>:$cond,
+      Type<MyCast_AssignmentExpressionPred>:$body);
+  let results = (outs MyCast_TypeGenericItemType:$res);
+  let assemblyFormat = [{
         `(``(` $cond `:` type($cond) `)`
         `,` `(` $body `:` type($body)`)``)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         llvm::cast<MyCastInterface>(getCond().getDefiningOp()).prettyPrint(out, 0);
         out << ": ";
         llvm::cast<MyCastInterface>(getBody().getDefiningOp()).prettyPrint(out, 0);
     }];
+  
+  code addTypeBody = [{
+    if (llvm::cast<MyCastInterface>(getCond().getDefiningOp()).addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    auto body = llvm::cast<MyCastInterface>(getBody().getDefiningOp());
+    if (body.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    getOperation()->setAttr("myCastType", body.getTypeAttr());
+    return mlir::success();
+  }];
 }
 
 def MyCast_DefaultGenericItemOp : MyCast_Op<"defaultGenericItem"> {
-    let arguments = (ins Type<MyCast_AssignmentExpressionPred>:$body);
-    let results = (outs MyCast_DefaultGenericItemType:$res);
-    let assemblyFormat = [{
-        `,` `(` $body `:` type($body)`)``)`
+  let arguments = (ins Type<MyCast_AssignmentExpressionPred>:$body);
+  let results = (outs MyCast_DefaultGenericItemType:$res);
+  let assemblyFormat = [{
+        `(` $body `:` type($body)`)`
         attr-dict
     }];
 
-    code prettyPrintBody = [{
+  code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
         out << "default: ";
         llvm::cast<MyCastInterface>(getBody().getDefiningOp()).prettyPrint(out, 0);
     }];
+  
+  code addTypeBody = [{
+    auto body = llvm::cast<MyCastInterface>(getBody().getDefiningOp());
+    if (body.addType(globals, locals, funMap, fieldMap).failed())
+      return mlir::failure();
+    getOperation()->setAttr("myCastType", body.getTypeAttr());
+    return mlir::success();
+  }];
 }
 #endif // MYCAST_OPS

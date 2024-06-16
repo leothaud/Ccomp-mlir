@@ -38,7 +38,9 @@ def MyCast_Dialect : Dialect {
 
 class MyCast_UnpureOp<string mnemonic, list<Trait> traits = []> :
     Op<MyCast_Dialect, mnemonic, !listconcat(traits, [DeclareOpInterfaceMethods<MyCastInterface,
-            ["prettyPrint", "checkDefinedVar", "checkDeclaredFun", "replaceAlias"]>]
+            ["prettyPrint", "checkDefinedVar", "checkDeclaredFun", "addType", "getTypeAttr",
+            "isStatic", "isExtern", "isConst", "isVolatile", "isVolatile", "isConst",
+            "isExtern", "isStatic"]>]
             )> {
 
     code prettyPrintBody = [{}];
@@ -81,13 +83,65 @@ class MyCast_UnpureOp<string mnemonic, list<Trait> traits = []> :
         }
     }];
 
-    code typeCompatibleWithInt = [{false}];
-
-    let extraClassDeclaration = [{
-        static const bool compatibleWithInt = }] # typeCompatibleWithInt # [{;
+    code addTypeBody = [{
+        return mlir::success();
     }];
 
-    let extraClassDefinition = checkDeclaredFunDefinition #
+    code addTypeDefinition =  [{
+        mlir::LogicalResult ccomp::myCast::}] #
+            !strconcat(!toupper(!substr(mnemonic,0,1)),
+                !substr(mnemonic,1,!size(mnemonic))) #
+        [{Op::addType(llvm::StringMap<mlir::Attribute> &globals, llvm::StringMap<mlir::Attribute> &locals,
+                      FunctionMap &funMap, llvm::StringMap<llvm::StringMap<mlir::Attribute>> &fieldMap) {
+        }] # addTypeBody # [{
+        }
+    }];
+
+    code getTypeDefinition =  [{
+        mlir::Attribute ccomp::myCast::}] #
+            !strconcat(!toupper(!substr(mnemonic,0,1)),
+                !substr(mnemonic,1,!size(mnemonic))) #
+        [{Op::getTypeAttr() {
+            if (getOperation()->hasAttr("myCastType"))
+                return getOperation()->getAttr("myCastType");
+            return ccomp::myCast::UntypedAttr::get(getContext());
+        }
+    }];
+
+    code isStatic = [{return false;}];
+    code isConst = [{return false;}];
+    code isExtern = [{return false;}];
+    code isVolatile = [{return false;}];
+
+    code isModifiedDefinition = [{
+        bool ccomp::myCast::}] #
+            !strconcat(!toupper(!substr(mnemonic,0,1)),
+                !substr(mnemonic,1,!size(mnemonic))) #
+        [{Op::isStatic() {
+        }] # isStatic # [{
+        }
+        bool ccomp::myCast::}] #
+            !strconcat(!toupper(!substr(mnemonic,0,1)),
+                !substr(mnemonic,1,!size(mnemonic))) #
+        [{Op::isConst() {
+        }] # isConst # [{
+        }
+        bool ccomp::myCast::}] #
+            !strconcat(!toupper(!substr(mnemonic,0,1)),
+                !substr(mnemonic,1,!size(mnemonic))) #
+        [{Op::isExtern() {
+        }] # isExtern # [{
+        }
+        bool ccomp::myCast::}] #
+            !strconcat(!toupper(!substr(mnemonic,0,1)),
+                !substr(mnemonic,1,!size(mnemonic))) #
+        [{Op::isVolatile() {
+        }] # isVolatile # [{
+        }
+    }];
+
+    let extraClassDefinition = isModifiedDefinition # getTypeDefinition #
+                               addTypeDefinition # checkDeclaredFunDefinition #
                                checkDefinedVarDefinition # prettyPrintDefinition #
                                [{}];
 
