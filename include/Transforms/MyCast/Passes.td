@@ -60,4 +60,22 @@ def CompleteTypeAstPass : Pass<"complete-type-ast", "ccomp::myCast::ProgramOp"> 
   let dependentDialects = ["ccomp::myCast::MyCastDialect"];
 }
 
+def VariableUniquerPass : Pass<"variable-uniquer", "ccomp::myCast::ProgramOp"> {
+  let summary = "make myC variables' name unique.";
+  let constructor = "ccomp::myCast::createVariableUniquerPass()";
+  let dependentDialects = ["ccomp::myCast::MyCastDialect"];
+}
+
+def ForAndDoToWhilePass : Pass<"forNdo-to-while", "ccomp::myCast::ProgramOp"> {
+  let summary = "replace for and do-while loops to while loops.";
+  let constructor = "ccomp::myCast::createForAndDoToWhilePass()";
+  let dependentDialects = ["ccomp::myCast::MyCastDialect"];
+}
+
+def InlineCompoundPass : Pass<"inline-compound", "ccomp::myCast::ProgramOp"> {
+  let summary = "replace for and do-while loops to while loops.";
+  let constructor = "ccomp::myCast::createInlineCompoundPass()";
+  let dependentDialects = ["ccomp::myCast::MyCastDialect"];
+}
+
 #endif // MYCAST_PASSES_TD

@@ -1,43 +1,33 @@
-#include "mlir/IR/Builders.h"
-#include "mlir/Pass/Pass.h"
-#include "mlir/Support/TypeID.h"
-#include "llvm/ADT/StringExtras.h"
-
-#include "mlir/IR/PatternMatch.h"
-#include "mlir/IR/Verifier.h"
-#include "mlir/Transforms/DialectConversion.h"
-#include "mlir/Transforms/GreedyPatternRewriteDriver.h"
-
-#include "mlir/Rewrite/PatternApplicator.h"
-
-#include "Dialect/MyCast/MyCastDialect.h"
 #include "Dialect/MyCast/MyCastOps.cpp.inc"
 #include "Dialect/MyCast/MyCastOps.h"
 #include "Dialect/MyCast/MyCastOps.h.inc"
 #include "Transforms/MyCast/Passes.h"
-#include "llvm/ADT/SmallVector.h"
+#include "mlir/IR/Builders.h"
+#include "mlir/IR/Operation.h"
+#include "mlir/IR/PatternMatch.h"
+#include "mlir/IR/Verifier.h"
+#include "mlir/Pass/Pass.h"
+#include "mlir/Rewrite/PatternApplicator.h"
+#include "mlir/Transforms/DialectConversion.h"
+#include "myCutils.h"
+#include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringMap.h"
 #include <memory>
 #include <mlir/Support/LogicalResult.h>
 
-
-#include "mlir/IR/Operation.h"
-#include "mlir/Pass/Pass.h"
-#include "mlir/Transforms/DialectConversion.h"
-
 namespace ccomp {
 namespace myCast {
 
-  class AliasRemoverPattern : public mlir::RewritePattern {
+class AliasRemoverPattern : public mlir::RewritePattern {
 public:
-  mutable llvm::StringMap<mlir::Operation*> aliases;
-
+  mutable llvm::StringMap<mlir::Operation *> aliases;
 
   AliasRemoverPattern(mlir::MLIRContext *context)
       : RewritePattern(MatchAnyOpTypeTag(), 1, context) {}
 
-  virtual mlir::LogicalResult matchAndRewrite(mlir::Operation *op,
-                                        mlir::PatternRewriter &rewriter) const override  {
+  virtual mlir::LogicalResult
+  matchAndRewrite(mlir::Operation *op,
+                  mlir::PatternRewriter &rewriter) const override {
     if (auto td = llvm::dyn_cast<ccomp::myCast::AliasDefOp>(op)) {
       std::string aliasName = td.getName().getValue().data();
       aliases[aliasName] = td.getBaseType().getDefiningOp();
@@ -47,7 +37,7 @@ public:
       std::string typeName = td.getName().getValue().data();
       if (!aliases.contains(typeName)) {
         llvm::errs() << "Error: type " << typeName << " not found.\ntypes:\n";
-        for (auto alias: aliases.keys())
+        for (auto alias : aliases.keys())
           llvm::errs() << alias << "\n";
         exit(1);
       }
@@ -61,11 +51,14 @@ public:
 
 class TypedefRemoverPattern : public mlir::RewritePattern {
 public:
-  TypedefRemoverPattern(mlir::MLIRContext *context) : mlir::RewritePattern(AliasDefOp::getOperationName(),1,context) {}
+  TypedefRemoverPattern(mlir::MLIRContext *context)
+      : mlir::RewritePattern(AliasDefOp::getOperationName(), 1, context) {}
 
-  mlir::LogicalResult matchAndRewrite(mlir::Operation *op, mlir::PatternRewriter &rewriter) const override {
+  mlir::LogicalResult
+  matchAndRewrite(mlir::Operation *op,
+                  mlir::PatternRewriter &rewriter) const override {
     if (auto td = llvm::dyn_cast<AliasDefOp>(op)) {
-      for (auto &use: td->getUses()) {
+      for (auto &use : td->getUses()) {
         auto *owner = use.getOwner();
 
         rewriter.startOpModification(owner);
@@ -82,26 +75,13 @@ public:
   }
 };
 
-template <class T>
-mlir::LogicalResult applyPattern(mlir::Operation *op) {
-  mlir::RewritePatternSet patterns(op->getContext());
-  patterns.add<T>(op->getContext());
-  mlir::GreedyRewriteConfig config;
-  config.useTopDownTraversal = true;
-  return mlir::applyPatternsAndFoldGreedily(op->getParentOp(), std::move(patterns), config);
-}
-
-
-
-struct ReplaceAliasPass
-    : public impl::ReplaceAliasPassBase<ReplaceAliasPass> {
+struct ReplaceAliasPass : public impl::ReplaceAliasPassBase<ReplaceAliasPass> {
 public:
   void runOnOperation() override {
 
-    auto op = getOperation();
-    (void)applyPattern<AliasRemoverPattern>(op);
-    (void)applyPattern<TypedefRemoverPattern>(op);
-
+    auto *op = getOperation()->getParentOp();
+    (void)applyPattern<AliasRemoverPattern>(op, true);
+    (void)applyPattern<TypedefRemoverPattern>(op, true);
   }
 };
 

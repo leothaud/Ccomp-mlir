@@ -17,6 +17,7 @@
 #include "mlir/Interfaces/SideEffectInterfaces.h"
 #include "mlir/IR/BuiltinAttributes.h"
 #include "mlir/Bytecode/BytecodeOpInterface.h"
+#include "llvm/ADT/StringSet.h"
 
 #include "Dialect/MyCast/MyCastOpsTypes.h"
 #include "Dialect/MyCast/MyCastAttr.h"

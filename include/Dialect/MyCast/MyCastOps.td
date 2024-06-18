@@ -181,6 +181,18 @@ def MyCast_ArgumentOp : MyCast_Op<"argument"> {
     getOperation()->setAttr("myCastType", argAttr);
     return mlir::success();
   }];
+
+  code variableUniquerBody = [{
+    int i = 0;
+    std::string baseName = getName().getValue().data();
+    std::string newName;
+    do
+      newName = baseName + "__" + std::to_string(i++);
+    while (usedName.contains(newName));
+    usedName.insert(newName);
+    renamer[baseName] = newName;
+    setNameAttr(mlir::StringAttr::get(getContext(), newName));
+  }];
 }
 
 def MyCast_VarDeclOp : MyCast_Op<"varDecl"> {
@@ -270,6 +282,22 @@ def MyCast_BaseVarDeclOp
         declared.push_back(getName().getValue().data());
         return declared;
     }];
+
+  code variableUniquerBody = [{
+    for (auto size: getSizes())
+      llvm::cast<MyCastInterface>(size.getDefiningOp()).variableUniquer(renamer, usedName);
+    if (getValue())
+      llvm::cast<MyCastInterface>(getValue().getDefiningOp()).variableUniquer(renamer, usedName);
+    int i = 0;
+    std::string baseName = getName().getValue().data();
+    std::string newName;
+    do
+      newName = baseName + "__" + std::to_string(i++);
+    while (usedName.contains(newName));
+    usedName.insert(newName);
+    renamer[baseName] = newName;
+    setNameAttr(mlir::StringAttr::get(getContext(), newName));
+  }];
 }
 
 def MyCast_UnionDefOp : MyCast_Op<"unionDef"> {
@@ -301,6 +329,20 @@ def MyCast_UnionDefOp : MyCast_Op<"unionDef"> {
         fieldMap[unionName] = fields;
         return mlir::success();
     }];
+    
+    code variableUniquerBody = [{
+      auto newRenamer = llvm::StringMap<std::string>(renamer);
+      for (auto decl: getDecls()) {
+        auto declOp = llvm::cast<VarDeclOp>(decl.getDefiningOp());
+        for (auto baseDecl: declOp.getDecls()) {
+        auto baseDeclOp = llvm::cast<BaseVarDeclOp>(baseDecl.getDefiningOp());
+          for (auto size: baseDeclOp.getSizes())
+            llvm::cast<MyCastInterface>(size.getDefiningOp()).variableUniquer(newRenamer, usedName);
+          if (baseDeclOp.getValue())
+            llvm::cast<MyCastInterface>(baseDeclOp.getValue().getDefiningOp()).variableUniquer(newRenamer, usedName);
+        }
+      }
+    }];
 }
 
 def MyCast_StructDefOp : MyCast_Op<"structDef"> {
@@ -331,6 +373,19 @@ def MyCast_StructDefOp : MyCast_Op<"structDef"> {
         std::string structName = getName().getValue().data();
         fieldMap[structName] = fields;
         return mlir::success();
+    }];
+    
+    code variableUniquerBody = [{
+      for (auto decl: getDecls()) {
+        auto declOp = llvm::cast<VarDeclOp>(decl.getDefiningOp());
+        for (auto baseDecl: declOp.getDecls()) {
+        auto baseDeclOp = llvm::cast<BaseVarDeclOp>(baseDecl.getDefiningOp());
+          for (auto size: baseDeclOp.getSizes())
+            llvm::cast<MyCastInterface>(size.getDefiningOp()).variableUniquer(renamer, usedName);
+          if (baseDeclOp.getValue())
+            llvm::cast<MyCastInterface>(baseDeclOp.getValue().getDefiningOp()).variableUniquer(renamer, usedName);
+        }
+      }
     }];
 }
 
@@ -481,6 +536,12 @@ def MyCast_CompoundStatementOp : MyCast_Op<"compoundStatement"> {
     }
     return mlir::success();
   }];
+
+  code variableUniquerBody = [{
+    auto newRenamer = llvm::StringMap<std::string>(renamer);
+    for (auto op: getOperation()->getOperands())
+      llvm::cast<MyCastInterface>(op.getDefiningOp()).variableUniquer(renamer, usedName);
+    }];
 }
 
 def MyCast_VarDeclStatementOp : MyCast_Op<"varDeclStatement"> {
@@ -549,6 +610,7 @@ def MyCast_IfStatementOp : MyCast_Op<"ifStatement"> {
             out <<"else\n";
             llvm::cast<MyCastInterface>(getElsePart().getDefiningOp()).prettyPrint(out, indent+1);
         }
+      
   }];
   
   code addTypeBody = [{
@@ -562,6 +624,14 @@ def MyCast_IfStatementOp : MyCast_Op<"ifStatement"> {
       if (llvm::cast<MyCastInterface>(getElsePart().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap).failed())
         return mlir::failure();
     return mlir::success();
+  }];
+
+  code variableUniquerBody = [{
+    llvm::cast<MyCastInterface>(getCond().getDefiningOp()).variableUniquer(renamer, usedName);
+    auto thenRenamer = llvm::StringMap<std::string>(renamer);
+    llvm::cast<MyCastInterface>(getThenPart().getDefiningOp()).variableUniquer(thenRenamer, usedName);
+    auto elseRenamer = llvm::StringMap<std::string>(renamer);
+    llvm::cast<MyCastInterface>(getCond().getDefiningOp()).variableUniquer(elseRenamer, usedName);
   }];
 
 }
@@ -603,6 +673,14 @@ def MyCast_SwitchStatementOp : MyCast_Op<"switchStatement"> {
         return mlir::failure();
     }
     return mlir::success();
+  }];
+
+  code variableUniquerBody = [{
+    llvm::cast<MyCastInterface>(getCond().getDefiningOp()).variableUniquer(renamer, usedName);
+    for (auto item: getItems()) {
+      auto newRenamer = llvm::StringMap<std::string>(renamer);
+      llvm::cast<MyCastInterface>(item.getDefiningOp()).variableUniquer(newRenamer, usedName);
+    }
   }];
 }
 
@@ -677,6 +755,12 @@ def MyCast_WhileStatementOp : MyCast_Op<"whileStatement"> {
     auto newLocals = llvm::StringMap<mlir::Attribute>(locals);
     return llvm::cast<MyCastInterface>(getBody().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap);
   }];
+
+  code variableUniquerBody = [{
+    llvm::cast<MyCastInterface>(getCond().getDefiningOp()).variableUniquer(renamer, usedName);
+    auto newRenamer = llvm::StringMap<std::string>(renamer);
+    llvm::cast<MyCastInterface>(getBody().getDefiningOp()).variableUniquer(newRenamer, usedName);
+  }];
 }
 
 def MyCast_DoWhileStatementOp : MyCast_Op<"doWhileStatement"> {
@@ -684,7 +768,7 @@ def MyCast_DoWhileStatementOp : MyCast_Op<"doWhileStatement"> {
       Type<MyCast_StatementPred>:$body);
   let results = (outs MyCast_DoWhileStatementType:$res);
   let assemblyFormat = [{
-        `(` $cond `:` type($cond) `)` `,` `(` $body `:` type($body) `)` `)` 
+        `(``(` $cond `:` type($cond) `)` `,` `(` $body `:` type($body) `)` `)` 
         attr-dict
     }];
 
@@ -705,6 +789,12 @@ def MyCast_DoWhileStatementOp : MyCast_Op<"doWhileStatement"> {
       return mlir::failure();
     auto newLocals = llvm::StringMap<mlir::Attribute>(locals);
     return llvm::cast<MyCastInterface>(getBody().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap);
+  }];
+
+  code variableUniquerBody = [{
+    llvm::cast<MyCastInterface>(getCond().getDefiningOp()).variableUniquer(renamer, usedName);
+    auto newRenamer = llvm::StringMap<std::string>(renamer);
+    llvm::cast<MyCastInterface>(getBody().getDefiningOp()).variableUniquer(newRenamer, usedName);
   }];
 }
 
@@ -764,6 +854,17 @@ def MyCast_ForStatementOp
       if (llvm::cast<MyCastInterface>(getStep().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap).failed())
         return mlir::failure();
     return llvm::cast<MyCastInterface>(getBody().getDefiningOp()).addType(globals, newLocals, funMap, fieldMap);
+  }];
+
+  code variableUniquerBody = [{
+    auto newRenamer = llvm::StringMap<std::string>(renamer);
+    if (getInit())
+      llvm::cast<MyCastInterface>(getInit().getDefiningOp()).variableUniquer(newRenamer, usedName);
+    if (getCond())
+      llvm::cast<MyCastInterface>(getCond().getDefiningOp()).variableUniquer(newRenamer, usedName);
+    if (getStep())
+      llvm::cast<MyCastInterface>(getStep().getDefiningOp()).variableUniquer(newRenamer, usedName);
+    llvm::cast<MyCastInterface>(getBody().getDefiningOp()).variableUniquer(newRenamer, usedName);
   }];
 }
 
@@ -2638,6 +2739,11 @@ def MyCast_VarExpressionOp : MyCast_Op<"varExpression"> {
     llvm::errs() << "Error: variable " << name << " does not exist.\n";
     getOperation()->dump();
     exit(1);
+  }];
+
+  code variableUniquerBody = [{
+    std::string baseName = getName().getValue().data();
+    setNameAttr(mlir::StringAttr::get(getContext(), renamer[baseName]));
   }];
 }
 

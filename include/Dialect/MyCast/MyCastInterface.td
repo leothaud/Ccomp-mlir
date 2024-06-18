@@ -51,6 +51,11 @@ def MyCastInterface : OpInterface<"MyCastInterface"> {
     InterfaceMethod<
       "Operations must have a isStatic method.",
       "bool", "isStatic", (ins ), [{}], [{ {} }]
+    >,
+    InterfaceMethod<
+      "Operations must have a variableUniquer method.",
+      "void", "variableUniquer", (ins "llvm::StringMap<std::string> &":$renamer,
+          "llvm::StringSet<> &":$usedName), [{}], [{ {} }]
     >
   ];
   let cppNamespace = "::ccomp::myCast";

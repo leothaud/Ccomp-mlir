@@ -15,6 +15,7 @@
 #include "mlir/IR/Dialect.h"
 #include "mlir/IR/OpDefinition.h"
 #include "mlir/IR/PatternMatch.h"
+#include "llvm/ADT/StringSet.h"
 
 struct FunctionMap {
     llvm::StringMap<mlir::Attribute> returnType;

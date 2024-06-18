@@ -6,6 +6,9 @@ add_mlir_library(MyCastTransforms
     TypeAst/typeAst.cpp
     ReplaceGeneric/replaceGeneric.cpp
     CompleteTypeAst/completeTypeAst.cpp
+    VariableUniquer/variableUniquer.cpp
+    ForAndDoToWhile/forAndDoToWhile.cpp
+    CompoundInliner/compoundInliner.cpp
 
 DEPENDS
     MyCastTransformsPassIncGen

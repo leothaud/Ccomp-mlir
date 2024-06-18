@@ -40,7 +40,7 @@ class MyCast_UnpureOp<string mnemonic, list<Trait> traits = []> :
     Op<MyCast_Dialect, mnemonic, !listconcat(traits, [DeclareOpInterfaceMethods<MyCastInterface,
             ["prettyPrint", "checkDefinedVar", "checkDeclaredFun", "addType", "getTypeAttr",
             "isStatic", "isExtern", "isConst", "isVolatile", "isVolatile", "isConst",
-            "isExtern", "isStatic"]>]
+            "isExtern", "isStatic", "variableUniquer"]>]
             )> {
 
     code prettyPrintBody = [{}];
@@ -140,7 +140,22 @@ class MyCast_UnpureOp<string mnemonic, list<Trait> traits = []> :
         }
     }];
 
-    let extraClassDefinition = isModifiedDefinition # getTypeDefinition #
+    code variableUniquerBody = [{
+        for (auto op: getOperation()->getOperands())
+            llvm::cast<MyCastInterface>(op.getDefiningOp()).variableUniquer(renamer, usedName);
+    }];
+
+    code variableUniquerDefinition = [{
+        void ccomp::myCast::}] #
+            !strconcat(!toupper(!substr(mnemonic,0,1)),
+                !substr(mnemonic,1,!size(mnemonic))) #
+        [{Op::variableUniquer(llvm::StringMap<std::string> &renamer, llvm::StringSet<> &usedName) {
+        }] # variableUniquerBody # [{
+        }
+    }];
+
+    let extraClassDefinition = variableUniquerDefinition #
+                               isModifiedDefinition # getTypeDefinition #
                                addTypeDefinition # checkDeclaredFunDefinition #
                                checkDefinedVarDefinition # prettyPrintDefinition #
                                [{}];
