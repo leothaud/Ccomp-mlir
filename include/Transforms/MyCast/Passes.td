@@ -72,9 +72,9 @@ def ForAndDoToWhilePass : Pass<"forNdo-to-while", "ccomp::myCast::ProgramOp"> {
   let dependentDialects = ["ccomp::myCast::MyCastDialect"];
 }
 
-def InlineCompoundPass : Pass<"inline-compound", "ccomp::myCast::ProgramOp"> {
+def FlattenCompoundPass : Pass<"flatten-compound", "ccomp::myCast::ProgramOp"> {
   let summary = "replace for and do-while loops to while loops.";
-  let constructor = "ccomp::myCast::createInlineCompoundPass()";
+  let constructor = "ccomp::myCast::createFlattenCompoundPass()";
   let dependentDialects = ["ccomp::myCast::MyCastDialect"];
 }
 

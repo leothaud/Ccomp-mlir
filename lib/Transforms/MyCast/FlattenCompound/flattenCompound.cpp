@@ -20,10 +20,10 @@
 namespace ccomp {
 namespace myCast {
 
-class CompoundInlinerPattern
+class FlattenCompoundPattern
     : public mlir::OpRewritePattern<CompoundStatementOp> {
 public:
-  CompoundInlinerPattern(mlir::MLIRContext *context)
+  FlattenCompoundPattern(mlir::MLIRContext *context)
       : OpRewritePattern(context) {}
 
   virtual mlir::LogicalResult
@@ -47,17 +47,17 @@ public:
   }
 };
 
-struct InlineCompoundPass
-    : public impl::InlineCompoundPassBase<InlineCompoundPass> {
+struct FlattenCompoundPass
+    : public impl::FlattenCompoundPassBase<FlattenCompoundPass> {
 public:
   void runOnOperation() override {
-    (void)applyPattern<CompoundInlinerPattern>(getOperation()->getParentOp());
+    (void)applyPattern<FlattenCompoundPattern>(getOperation()->getParentOp());
   }
 };
 
 std::unique_ptr<::mlir::OperationPass<ccomp::myCast::ProgramOp>>
-createInlineCompoundPass() {
-  return std::make_unique<ccomp::myCast::InlineCompoundPass>();
+createFlattenCompoundPass() {
+  return std::make_unique<ccomp::myCast::FlattenCompoundPass>();
 }
 
 } // namespace myCast

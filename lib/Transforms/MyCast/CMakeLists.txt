@@ -8,7 +8,7 @@ add_mlir_library(MyCastTransforms
     CompleteTypeAst/completeTypeAst.cpp
     VariableUniquer/variableUniquer.cpp
     ForAndDoToWhile/forAndDoToWhile.cpp
-    CompoundInliner/compoundInliner.cpp
+    FlattenCompound/flattenCompound.cpp
 
 DEPENDS
     MyCastTransformsPassIncGen
