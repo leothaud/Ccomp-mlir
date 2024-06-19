@@ -29,6 +29,8 @@ namespace ccomp {
         std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createVariableUniquerPass();
         std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createForAndDoToWhilePass();
         std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createFlattenCompoundPass();
+        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createPullUpVarDeclsPass();
+        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createPropagateConstPass();
 
         
 
@@ -53,6 +55,10 @@ namespace ccomp {
 #define GEN_PASS_DEF_FORANDDOTOWHILEPASS
 #define GEN_PASS_DECL_FLATTENCOMPOUNDPASS
 #define GEN_PASS_DEF_FLATTENCOMPOUNDPASS
+#define GEN_PASS_DECL_PULLUPVARDECLSPASS
+#define GEN_PASS_DEF_PULLUPVARDECLSPASS
+#define GEN_PASS_DECL_PROPAGATECONSTPASS
+#define GEN_PASS_DEF_PROPAGATECONSTPASS
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES
         #include "Transforms/MyCast/Passes.h.inc"

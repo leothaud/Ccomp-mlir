@@ -61,7 +61,7 @@ struct ReplaceGenericPass
     : public impl::ReplaceGenericPassBase<ReplaceGenericPass> {
 public:
   void runOnOperation() override {
-    (void)applyPattern<ReplaceGenericPattern>(getOperation());
+    (void)applyPattern<ReplaceGenericPattern>(getOperation()->getParentOp());
   }
 };
 

@@ -78,4 +78,16 @@ def FlattenCompoundPass : Pass<"flatten-compound", "ccomp::myCast::ProgramOp"> {
   let dependentDialects = ["ccomp::myCast::MyCastDialect"];
 }
 
+def PullUpVarDeclsPass : Pass<"pull-up-var-decls", "ccomp::myCast::ProgramOp"> {
+  let summary = "put every var declaration statement at the top of the function body.";
+  let constructor = "ccomp::myCast::createPullUpVarDeclsPass()";
+  let dependentDialects = ["ccomp::myCast::MyCastDialect"];
+}
+
+def PropagateConstPass : Pass<"propagate-const", "ccomp::myCast::ProgramOp"> {
+  let summary = "propagate const variable values.";
+  let constructor = "ccomp::myCast::createPropagateConstPass()";
+  let dependentDialects = ["ccomp::myCast::MyCastDialect"];
+}
+
 #endif // MYCAST_PASSES_TD

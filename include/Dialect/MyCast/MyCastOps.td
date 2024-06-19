@@ -204,6 +204,10 @@ def MyCast_VarDeclOp : MyCast_Op<"varDecl"> {
         attr-dict
     }];
 
+  code isConst = [{
+    return llvm::cast<MyCastInterface>(getVarType().getDefiningOp()).isConst();
+  }];
+
   code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
@@ -258,6 +262,10 @@ def MyCast_BaseVarDeclOp
         `)` 
         attr-dict
     }];
+
+  code isConst = [{
+    return llvm::cast<MyCastInterface>(getOperation()->getParentOp()).isConst();
+  }];
 
   code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
@@ -317,7 +325,7 @@ def MyCast_UnionDefOp : MyCast_Op<"unionDef"> {
             llvm::cast<MyCastInterface>(decl.getDefiningOp()).prettyPrint(out, indent+1);
             out << "\n";
         }
-        out << "}";
+        out << "};";
     }];
 
     code addTypeBody = [{
@@ -362,7 +370,7 @@ def MyCast_StructDefOp : MyCast_Op<"structDef"> {
             llvm::cast<MyCastInterface>(decl.getDefiningOp()).prettyPrint(out, indent+1);
             out << "\n";
         }
-        out << "}";
+        out << "};";
     }];
 
     code addTypeBody = [{
@@ -413,7 +421,7 @@ def MyCast_EnumDefOp : MyCast_Op<"enumDef"> {
         out << "\n";
         for (int i = 0; i < indent; ++i)
             out << "  ";
-        out << "}";
+        out << "};";
     }];
 
     code addTypeBody = [{
@@ -563,6 +571,10 @@ def MyCast_VarDeclStatementOp : MyCast_Op<"varDeclStatement"> {
   code addTypeBody = [{
     return llvm::cast<MyCastInterface>(getDecl().getDefiningOp()).addType(globals, locals, funMap, fieldMap);
   }];
+
+  code getVarDeclsBody = [{
+    varDecls.push_back(getOperation());
+  }];
 }
 
 def MyCast_ExpressionStatementOp : MyCast_Op<"expressionStatement"> {
@@ -576,7 +588,7 @@ def MyCast_ExpressionStatementOp : MyCast_Op<"expressionStatement"> {
   code prettyPrintBody = [{
     if (getValue())
       llvm::cast<MyCastInterface>(getValue().getDefiningOp()).prettyPrint(out, indent);
-    out << ";\n";
+    out << ";";
   }];
 
   code addTypeBody = [{
@@ -1005,7 +1017,7 @@ def MyCast_StaticTypeModifierOp : MyCast_Op<"staticTypeModifier"> {
   code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
-        out << "static";
+        out << "static ";
     }];
   code isStatic = [{return true;}];
 }
@@ -1020,7 +1032,7 @@ def MyCast_ConstTypeModifierOp : MyCast_Op<"constTypeModifier"> {
   code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
-        out << "const";
+        out << "const ";
     }];
   code isConst = [{return true;}];
 }
@@ -1035,7 +1047,7 @@ def MyCast_ExternTypeModifierOp : MyCast_Op<"externTypeModifier"> {
   code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
-        out << "extern";
+        out << "extern ";
     }];
   code isExtern = [{return true;}];
 }
@@ -1050,7 +1062,7 @@ def MyCast_VolatileTypeModifierOp : MyCast_Op<"volatileTypeModifier"> {
   code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
-        out << "volatile";
+        out << "volatile ";
     }];
   code isVolatile = [{return true;}];
 }
@@ -2798,7 +2810,7 @@ def MyCast_StringExpressionOp : MyCast_Op<"stringExpression"> {
   code prettyPrintBody = [{
         for (int i = 0; i < indent; ++i)
             out << "  ";
-        out << getVal().getValue().data();
+        out << "\"" << getVal().getValue().data() << "\"";
     }];
   
   code addTypeBody = [{

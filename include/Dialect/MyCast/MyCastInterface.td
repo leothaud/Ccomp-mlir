@@ -56,6 +56,10 @@ def MyCastInterface : OpInterface<"MyCastInterface"> {
       "Operations must have a variableUniquer method.",
       "void", "variableUniquer", (ins "llvm::StringMap<std::string> &":$renamer,
           "llvm::StringSet<> &":$usedName), [{}], [{ {} }]
+    >,
+    InterfaceMethod<
+      "Operations must have a getVarDecls method.",
+      "void", "getVarDecls", (ins "llvm::SmallVector<mlir::Operation *> &":$varDelcs), [{}], [{ {} }]
     >
   ];
   let cppNamespace = "::ccomp::myCast";

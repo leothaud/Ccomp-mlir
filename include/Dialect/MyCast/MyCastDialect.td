@@ -40,7 +40,7 @@ class MyCast_UnpureOp<string mnemonic, list<Trait> traits = []> :
     Op<MyCast_Dialect, mnemonic, !listconcat(traits, [DeclareOpInterfaceMethods<MyCastInterface,
             ["prettyPrint", "checkDefinedVar", "checkDeclaredFun", "addType", "getTypeAttr",
             "isStatic", "isExtern", "isConst", "isVolatile", "isVolatile", "isConst",
-            "isExtern", "isStatic", "variableUniquer"]>]
+            "isExtern", "isStatic", "variableUniquer", "getVarDecls"]>]
             )> {
 
     code prettyPrintBody = [{}];
@@ -154,7 +154,21 @@ class MyCast_UnpureOp<string mnemonic, list<Trait> traits = []> :
         }
     }];
 
-    let extraClassDefinition = variableUniquerDefinition #
+    code getVarDeclsBody = [{
+        for (auto op: getOperation()->getOperands())
+            llvm::cast<MyCastInterface>(op.getDefiningOp()).getVarDecls(varDecls);
+    }];
+
+    code getVarDeclsDefinition = [{
+        void ccomp::myCast::}] #
+            !strconcat(!toupper(!substr(mnemonic,0,1)),
+                !substr(mnemonic,1,!size(mnemonic))) #
+        [{Op::getVarDecls(llvm::SmallVector<mlir::Operation *> &varDecls) {
+        }] # getVarDeclsBody # [{
+        }
+    }];
+
+    let extraClassDefinition = getVarDeclsDefinition # variableUniquerDefinition #
                                isModifiedDefinition # getTypeDefinition #
                                addTypeDefinition # checkDeclaredFunDefinition #
                                checkDefinedVarDefinition # prettyPrintDefinition #

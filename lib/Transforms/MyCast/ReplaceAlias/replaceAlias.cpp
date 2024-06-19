@@ -58,16 +58,7 @@ public:
   matchAndRewrite(mlir::Operation *op,
                   mlir::PatternRewriter &rewriter) const override {
     if (auto td = llvm::dyn_cast<AliasDefOp>(op)) {
-      for (auto &use : td->getUses()) {
-        auto *owner = use.getOwner();
-
-        rewriter.startOpModification(owner);
-        auto prog = llvm::cast<ProgramOp>(owner);
-        auto items = prog.getItemsMutable();
-        items.erase(use.getOperandNumber());
-        rewriter.finalizeOpModification(owner);
-      }
-      rewriter.eraseOp(td);
+      eraseOpFromProgram(td, rewriter);
 
       return mlir::success();
     }

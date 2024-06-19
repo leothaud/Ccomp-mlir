@@ -1,10 +1,16 @@
-int variable = 0;
+const int variable = 0;
 
 float floatVar = 3.14;
 
 union myUnion {
     int fieldA = 1, fieldB;
-    char fieldC = variable;
+    char fieldC;
+};
+
+struct myStruct {
+    int A = 2;
+    int B = 3;
+    int variable = variable;
 };
 
 enum myEnum {
@@ -20,13 +26,14 @@ typedef float mytype3;
 typedef union myUnion myUnion_t;
 
 int main(int argc, char** argv) {
+    const int variable = 1;
     mytype1 x = 17;
-    int y = 3 * x + 1;
     char *s = "myString";
     for (int i = 3; i < 6; ++i)
         printf(i);
+    int y = 3 * x + 1;
     do {
         ++y;
     } while( y < 16);
-    return _Generic(x, char: 3, int:y, default:4);
+    return _Generic(x, char: variable, int:y, default:4);
 }
