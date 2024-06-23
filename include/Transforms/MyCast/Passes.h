@@ -17,23 +17,34 @@
 #include "mlir/Pass/PassRegistry.h"
 
 namespace ccomp {
-    namespace myCast {
+namespace myCast {
 
-        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createPrettyPrintAstPass();
-        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createCheckDefinedVarPass();
-        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createCheckDeclaredFunPass();
-        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createReplaceAliasPass();
-        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createTypeAstPass();
-        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createReplaceGenericPass();
-        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createCompleteTypeAstPass();
-        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createVariableUniquerPass();
-        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createForAndDoToWhilePass();
-        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createFlattenCompoundPass();
-        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createPullUpVarDeclsPass();
-        std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>> createPropagateConstPass();
-
-        
-
+std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>>
+createPrettyPrintAstPass();
+std::unique_ptr<::mlir::OperationPass<ccomp::myCast::ProgramOp>>
+createPrettyPrintAstPass(std::string filename);
+std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>>
+createCheckDefinedVarPass();
+std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>>
+createCheckDeclaredFunPass();
+std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>>
+createReplaceAliasPass();
+std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>>
+createTypeAstPass();
+std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>>
+createReplaceGenericPass();
+std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>>
+createCompleteTypeAstPass();
+std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>>
+createVariableUniquerPass();
+std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>>
+createForAndDoToWhilePass();
+std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>>
+createFlattenCompoundPass();
+std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>>
+createPullUpVarDeclsPass();
+std::unique_ptr<mlir::OperationPass<ccomp::myCast::ProgramOp>>
+createPropagateConstPass();
 
 #define GEN_PASS_DECL_PRETTYPRINTASTPASS
 #define GEN_PASS_DEF_PRETTYPRINTASTPASS
@@ -61,9 +72,9 @@ namespace ccomp {
 #define GEN_PASS_DEF_PROPAGATECONSTPASS
 #define GEN_PASS_REGISTRATION
 #define GEN_PASS_CLASSES
-        #include "Transforms/MyCast/Passes.h.inc"
+#include "Transforms/MyCast/Passes.h.inc"
 
-    } // namespace myCast
+} // namespace myCast
 } // namespace ccomp
 
 #endif // MYCAST_PASSES

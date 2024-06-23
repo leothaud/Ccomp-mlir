@@ -7,8 +7,8 @@
 //
 //===------------- Copyright 2024 Dylan Leothaud --------------------------===//
 
-#include "MyCFrontendVisitor.h"
 #include "MyCParser.h"
+#include "MyCFrontendVisitor.h"
 #include <any>
 #include <string>
 

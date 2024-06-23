@@ -15,6 +15,11 @@ namespace myCast {
 struct PrettyPrinterAstPass
     : public impl::PrettyPrintAstPassBase<PrettyPrinterAstPass> {
 public:
+
+  PrettyPrinterAstPass() : impl::PrettyPrintAstPassBase<PrettyPrinterAstPass>() {}
+
+  PrettyPrinterAstPass(PrettyPrintAstPassOptions options) : impl::PrettyPrintAstPassBase<PrettyPrinterAstPass>(options) {}
+
   void runOnOperation() override {
     std::ofstream fileStream;
     fileStream.open(this->filename);
@@ -33,6 +38,14 @@ public:
 std::unique_ptr<::mlir::OperationPass<ccomp::myCast::ProgramOp>>
 createPrettyPrintAstPass() {
   return std::make_unique<ccomp::myCast::PrettyPrinterAstPass>();
+}
+
+std::unique_ptr<::mlir::OperationPass<ccomp::myCast::ProgramOp>>
+createPrettyPrintAstPass(std::string filename) {
+  PrettyPrintAstPassOptions options;
+  options.filename = filename;
+  auto pass = std::make_unique<ccomp::myCast::PrettyPrinterAstPass>(options);
+  return pass;
 }
 
 } // namespace myCast
